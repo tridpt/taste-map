@@ -112,6 +112,7 @@ function init() {
   bindEvents();
   render();
   refreshIcons();
+  registerServiceWorker();
 }
 
 function cacheElements() {
@@ -892,6 +893,26 @@ function refreshIcons() {
   if (window.lucide) {
     window.lucide.createIcons();
   }
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").then((registration) => {
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            showStatus("Có bản mới. Tải lại trang để cập nhật.");
+          }
+        });
+      });
+    }).catch((error) => {
+      console.warn("Không đăng ký được service worker:", error);
+    });
+  });
 }
 
 function escapeHtml(value) {
