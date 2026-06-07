@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quán quen</title>
+  <meta name="theme-color" content="#f4f7f6" />
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><i data-lucide="map-pin"></i></span>
+        <div>
+          <h1>Quán quen</h1>
+          <p id="placeCount">0 quán đã lưu</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <label class="search-box" for="globalSearch">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <input id="globalSearch" type="search" autocomplete="off" placeholder="Tìm theo tên, khu vực, ghi chú" />
+        </label>
+        <button id="locateBtn" class="icon-button" type="button" title="Vị trí của tôi" aria-label="Vị trí của tôi">
+          <i data-lucide="navigation"></i>
+        </button>
+        <button id="exportBtn" class="ghost-button" type="button">
+          <i data-lucide="download"></i>
+          <span>Xuất</span>
+        </button>
+        <button id="importTrigger" class="ghost-button" type="button">
+          <i data-lucide="upload"></i>
+          <span>Nhập</span>
+        </button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden />
+        <button id="newPlaceBtn" class="primary-button" type="button">
+          <i data-lucide="plus"></i>
+          <span>Quán mới</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="workspace" class="workspace">
+      <aside class="sidebar" aria-label="Bộ lọc và danh sách quán">
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Bộ lọc</h2>
+            <button id="resetFiltersBtn" class="text-button" type="button">Đặt lại</button>
+          </div>
+
+          <div class="field">
+            <label>Loại quán</label>
+            <div id="typeFilters" class="segmented" role="group" aria-label="Loại quán"></div>
+          </div>
+
+          <div class="field">
+            <label>Gu hôm nay</label>
+            <div id="purposeFilters" class="chip-group" role="group" aria-label="Gu hôm nay"></div>
+          </div>
+
+          <div class="field compact">
+            <label for="sortMode">Sắp xếp</label>
+            <select id="sortMode">
+              <option value="fit">Hợp gu nhất</option>
+              <option value="recent">Mới cập nhật</option>
+              <option value="price">Giá thấp trước</option>
+              <option value="name">Tên A-Z</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel list-panel">
+          <div class="panel-heading">
+            <h2>Quán đã lưu</h2>
+            <span id="filteredCount" class="meta-count">0</span>
+          </div>
+          <div id="placeList" class="place-list"></div>
+          <div id="emptyState" class="empty-state hidden">
+            <i data-lucide="map"></i>
+            <p>Chưa có quán phù hợp.</p>
+          </div>
+        </section>
+      </aside>
+
+      <section class="map-stage" aria-label="Bản đồ quán quen">
+        <div class="map-toolbar">
+          <div class="geo-search-wrap">
+            <label class="geo-search" for="geoSearch">
+              <i data-lucide="map-pinned" aria-hidden="true"></i>
+              <input id="geoSearch" type="search" autocomplete="off" placeholder="Tìm địa điểm hoặc địa chỉ" />
+              <button id="geoSearchBtn" class="icon-button dark" type="button" title="Tìm vị trí" aria-label="Tìm vị trí">
+                <i data-lucide="search"></i>
+              </button>
+            </label>
+            <div id="geoResults" class="geo-results hidden"></div>
+          </div>
+          <button id="pinModeBtn" class="ghost-button dark" type="button" aria-pressed="false">
+            <i data-lucide="crosshair"></i>
+            <span>Ghim</span>
+          </button>
+        </div>
+        <div id="map"></div>
+        <div id="mapStatus" class="map-status hidden" role="status"></div>
+      </section>
+
+      <aside id="editorPanel" class="editor-panel" aria-label="Thông tin quán" aria-hidden="true">
+        <form id="placeForm" autocomplete="off">
+          <div class="editor-header">
+            <div>
+              <p id="editorMode" class="eyebrow">Quán mới</p>
+              <h2 id="editorTitle">Lưu quán</h2>
+            </div>
+            <button id="closeEditorBtn" class="icon-button" type="button" title="Đóng" aria-label="Đóng">
+              <i data-lucide="x">×</i>
+            </button>
+          </div>
+
+          <input id="placeId" type="hidden" />
+
+          <div class="field">
+            <label for="placeName">Tên quán</label>
+            <input id="placeName" type="text" required maxlength="80" />
+          </div>
+
+          <div class="two-col">
+            <div class="field">
+              <label for="placeType">Loại</label>
+              <select id="placeType"></select>
+            </div>
+            <div class="field">
+              <label for="priceLevel">Giá</label>
+              <select id="priceLevel">
+                <option value="1">₫</option>
+                <option value="2">₫₫</option>
+                <option value="3">₫₫₫</option>
+                <option value="4">₫₫₫₫</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="placeAddress">Địa chỉ / khu vực</label>
+            <input id="placeAddress" type="text" maxlength="160" />
+          </div>
+
+          <div class="two-col">
+            <div class="field">
+              <label for="placeLat">Vĩ độ</label>
+              <input id="placeLat" type="number" step="0.000001" required />
+            </div>
+            <div class="field">
+              <label for="placeLng">Kinh độ</label>
+              <input id="placeLng" type="number" step="0.000001" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="lastVisit">Lần ghé gần nhất</label>
+            <input id="lastVisit" type="date" />
+          </div>
+
+          <div id="ratingFields" class="rating-fields"></div>
+
+          <div class="field">
+            <label for="placeTags">Tag riêng</label>
+            <input id="placeTags" type="text" maxlength="120" placeholder="wifi mạnh, ngồi lâu, gửi xe dễ" />
+          </div>
+
+          <div class="field">
+            <label for="placeNotes">Ghi chú</label>
+            <textarea id="placeNotes" rows="4" maxlength="500"></textarea>
+          </div>
+
+          <div class="favorite-row">
+            <label class="switch">
+              <input id="favoritePlace" type="checkbox" />
+              <span></span>
+            </label>
+            <span>Đánh dấu quán ruột</span>
+          </div>
+
+          <div class="form-actions">
+            <button id="deletePlaceBtn" class="danger-button hidden" type="button">
+              <i data-lucide="trash-2"></i>
+              <span>Xóa</span>
+            </button>
+            <button class="primary-button" type="submit">
+              <i data-lucide="save"></i>
+              <span>Lưu quán</span>
+            </button>
+          </div>
+        </form>
+      </aside>
+    </main>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
