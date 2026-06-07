@@ -18,14 +18,29 @@ const PURPOSES = [
   { key: "work", label: "Làm việc", short: "Work", icon: "laptop" },
 ];
 
+const DAY_OPTIONS = [
+  { key: 1, label: "T2" },
+  { key: 2, label: "T3" },
+  { key: 3, label: "T4" },
+  { key: 4, label: "T5" },
+  { key: 5, label: "T6" },
+  { key: 6, label: "T7" },
+  { key: 0, label: "CN" },
+];
+
 const els = {};
 let map;
 let markers = new Map();
 let userMarker = null;
+let userLocation = null;
 let places = [];
 let selectedId = null;
 let activeTypes = new Set(TYPES.map((type) => type.key));
 let activePurposes = new Set();
+let activeTags = new Set();
+let editorPhotos = [];
+let editorVisits = [];
+let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
 let pinMode = false;
 let statusTimer = null;
 
@@ -128,7 +143,10 @@ function cacheElements() {
     "resetFiltersBtn",
     "typeFilters",
     "purposeFilters",
+    "tagFilters",
     "sortMode",
+    "suggestMood",
+    "recommendationList",
     "filteredCount",
     "placeList",
     "emptyState",
@@ -153,6 +171,17 @@ function cacheElements() {
     "placeLng",
     "lastVisit",
     "ratingFields",
+    "addPhotoBtn",
+    "placePhotosInput",
+    "photoGallery",
+    "openingDays",
+    "openingOpen",
+    "openingClose",
+    "visitDate",
+    "visitRating",
+    "addVisitBtn",
+    "visitNote",
+    "visitHistoryList",
     "placeTags",
     "placeNotes",
     "favoritePlace",
@@ -194,6 +223,14 @@ function hydrateStaticControls() {
       </div>
     `,
   ).join("");
+
+  els.openingDays.innerHTML = DAY_OPTIONS.map(
+    (day) => `
+      <button class="day-toggle" type="button" data-day="${day.key}" aria-pressed="true">
+        ${escapeHtml(day.label)}
+      </button>
+    `,
+  ).join("");
 }
 
 function initMap() {
@@ -226,6 +263,7 @@ function initMap() {
 function bindEvents() {
   els.globalSearch.addEventListener("input", render);
   els.sortMode.addEventListener("change", render);
+  els.suggestMood.addEventListener("change", renderRecommendations);
   els.newPlaceBtn.addEventListener("click", () => openEditor());
   els.closeEditorBtn.addEventListener("click", closeEditor);
   els.resetFiltersBtn.addEventListener("click", resetFilters);
@@ -278,6 +316,19 @@ function bindEvents() {
     render();
   });
 
+  els.tagFilters.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-tag]");
+    if (!button) return;
+    const tag = button.dataset.tag;
+    if (activeTags.has(tag)) {
+      activeTags.delete(tag);
+    } else {
+      activeTags.add(tag);
+    }
+    syncFilterButtons();
+    render();
+  });
+
   els.placeList.addEventListener("click", (event) => {
     const editButton = event.target.closest("[data-action='edit']");
     if (editButton) {
@@ -293,6 +344,12 @@ function bindEvents() {
       return;
     }
 
+    const item = event.target.closest("[data-place-id]");
+    if (!item) return;
+    selectPlace(item.dataset.placeId, true);
+  });
+
+  els.recommendationList.addEventListener("click", (event) => {
     const item = event.target.closest("[data-place-id]");
     if (!item) return;
     selectPlace(item.dataset.placeId, true);
@@ -318,6 +375,36 @@ function bindEvents() {
     const range = event.target.closest("[data-rating]");
     if (!range) return;
     range.parentElement.querySelector("output").value = range.value;
+  });
+
+  els.addPhotoBtn.addEventListener("click", () => els.placePhotosInput.click());
+  els.placePhotosInput.addEventListener("change", handlePhotoSelection);
+  els.photoGallery.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-photo-id]");
+    if (!button) return;
+    editorPhotos = editorPhotos.filter((photo) => photo.id !== button.dataset.photoId);
+    renderEditorPhotos();
+  });
+
+  els.openingDays.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-day]");
+    if (!button) return;
+    const day = Number(button.dataset.day);
+    if (editorOpeningDays.has(day)) {
+      editorOpeningDays.delete(day);
+    } else {
+      editorOpeningDays.add(day);
+    }
+    renderOpeningDays();
+  });
+
+  els.addVisitBtn.addEventListener("click", addEditorVisit);
+  els.visitHistoryList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-visit-id]");
+    if (!button) return;
+    editorVisits = editorVisits.filter((visit) => visit.id !== button.dataset.visitId);
+    syncLastVisitFromHistory();
+    renderVisitHistory();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -360,6 +447,8 @@ function normalizePlace(place) {
   PURPOSES.forEach((purpose) => {
     ratings[purpose.key] = clampRating(place.ratings?.[purpose.key]);
   });
+  const visits = normalizeVisits(place.visits);
+  const lastVisit = String(place.lastVisit || visits[0]?.date || "").slice(0, 10);
 
   return {
     id: String(place.id || makeId()),
@@ -374,8 +463,11 @@ function normalizePlace(place) {
       ? place.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 12)
       : splitTags(place.tags),
     notes: String(place.notes || "").trim(),
-    lastVisit: String(place.lastVisit || "").slice(0, 10),
+    lastVisit,
     favorite: Boolean(place.favorite),
+    images: normalizeImages(place.images),
+    openingHours: normalizeOpeningHours(place.openingHours),
+    visits,
     createdAt: Number(place.createdAt || Date.now()),
     updatedAt: Number(place.updatedAt || Date.now()),
   };
@@ -385,13 +477,119 @@ function isValidPlace(place) {
   return place.name && Number.isFinite(place.lat) && Number.isFinite(place.lng);
 }
 
+function normalizeImages(images) {
+  if (!Array.isArray(images)) return [];
+  return images
+    .map((photo) => {
+      if (typeof photo === "string") {
+        return { id: makeId(), dataUrl: photo };
+      }
+      return {
+        id: String(photo.id || makeId()),
+        dataUrl: String(photo.dataUrl || ""),
+      };
+    })
+    .filter((photo) => photo.dataUrl.startsWith("data:image/"))
+    .slice(0, 8);
+}
+
+function normalizeOpeningHours(hours) {
+  const days = Array.isArray(hours?.days)
+    ? hours.days.map(Number).filter((day) => day >= 0 && day <= 6)
+    : DAY_OPTIONS.map((day) => day.key);
+  return {
+    days: [...new Set(days)],
+    open: isTimeValue(hours?.open) ? hours.open : "",
+    close: isTimeValue(hours?.close) ? hours.close : "",
+  };
+}
+
+function normalizeVisits(visits) {
+  if (!Array.isArray(visits)) return [];
+  return visits
+    .map((visit) => ({
+      id: String(visit.id || makeId()),
+      date: String(visit.date || "").slice(0, 10),
+      rating: clampRating(visit.rating || 3) || 3,
+      note: String(visit.note || "").trim(),
+    }))
+    .filter((visit) => /^\d{4}-\d{2}-\d{2}$/.test(visit.date))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 50);
+}
+
+function isTimeValue(value) {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 function render() {
   const filtered = getFilteredPlaces();
   els.placeCount.textContent = `${places.length} ${places.length === 1 ? "quán" : "quán"} đã lưu`;
   els.filteredCount.textContent = String(filtered.length);
+  renderTagFilters();
+  renderRecommendations();
   renderList(filtered);
   renderMarkers(filtered);
   refreshIcons();
+}
+
+function renderTagFilters() {
+  const counts = new Map();
+  places.forEach((place) => {
+    place.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1));
+  });
+  const tags = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "vi"))
+    .slice(0, 18);
+
+  activeTags.forEach((tag) => {
+    if (!counts.has(tag)) activeTags.delete(tag);
+  });
+
+  els.tagFilters.innerHTML = tags.map(([tag, count]) => `
+    <button class="chip-button" type="button" data-tag="${escapeAttr(tag)}" aria-pressed="${activeTags.has(tag)}">
+      <span>${escapeHtml(tag)}</span>
+      <span>${count}</span>
+    </button>
+  `).join("");
+}
+
+function renderRecommendations() {
+  const mood = els.suggestMood.value;
+  const candidates = places
+    .filter((place) => activeTypes.has(place.type))
+    .filter((place) => [...activeTags].every((tag) => place.tags.includes(tag)));
+
+  if (mood === "nearby" && !userLocation) {
+    els.recommendationList.innerHTML = '<p class="recommendation-empty">Bấm nút vị trí để gợi ý quán gần bạn.</p>';
+    return;
+  }
+
+  const recommended = candidates
+    .map((place) => ({ place, score: getMoodScore(place, mood) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  if (recommended.length === 0) {
+    els.recommendationList.innerHTML = '<p class="recommendation-empty">Chưa có quán phù hợp.</p>';
+    return;
+  }
+
+  els.recommendationList.innerHTML = recommended.map(({ place, score }) => {
+    const distance = formatDistance(getDistanceFromUser(place));
+    const meta = [getType(place.type).label, distance, getOpeningStatus(place).label]
+      .filter(Boolean)
+      .join(" • ");
+    return `
+      <button class="recommendation-item" type="button" data-place-id="${escapeAttr(place.id)}">
+        <span>
+          <strong>${escapeHtml(place.name)}</strong>
+          <span>${escapeHtml(meta || place.address || "Chưa có địa chỉ")}</span>
+        </span>
+        <span class="score-badge">${Math.round(score)}</span>
+      </button>
+    `;
+  }).join("");
 }
 
 function renderList(filtered) {
@@ -399,6 +597,10 @@ function renderList(filtered) {
   els.placeList.innerHTML = filtered.map((place) => {
     const type = getType(place.type);
     const selected = place.id === selectedId ? " selected" : "";
+    const status = getOpeningStatus(place);
+    const distance = formatDistance(getDistanceFromUser(place));
+    const thumb = place.images[0]?.dataUrl || "";
+    const tags = place.tags.slice(0, 3).map((tag) => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join("");
     const ratings = PURPOSES.map((purpose) => {
       const value = place.ratings[purpose.key] || 0;
       return `
@@ -410,28 +612,35 @@ function renderList(filtered) {
     }).join("");
 
     return `
-      <article class="place-item${selected}" data-place-id="${escapeAttr(place.id)}">
-        <div class="place-item-top">
-          <div class="place-title">
-            <h3>${escapeHtml(place.name)}</h3>
-            <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
+      <article class="place-item${selected}${thumb ? " place-with-photo" : ""}" data-place-id="${escapeAttr(place.id)}">
+        ${thumb ? `<img class="place-thumb" src="${escapeAttr(thumb)}" alt="${escapeAttr(place.name)}" loading="lazy" />` : ""}
+        <div class="place-main">
+          <div class="place-item-top">
+            <div class="place-title">
+              <h3>${escapeHtml(place.name)}</h3>
+              <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
+            </div>
+            <span class="score-badge">${Math.round(getFitScore(place))}</span>
           </div>
-          <span class="score-badge">${Math.round(getFitScore(place))}</span>
-        </div>
-        <div class="place-meta">
-          <span class="type-badge" style="background:${escapeAttr(type.color)}">
-            <i data-lucide="${escapeAttr(type.icon)}"></i>
-            ${escapeHtml(type.label)}
-          </span>
-          <span class="price-badge">${formatPrice(place.priceLevel)}</span>
-          ${place.favorite ? '<span class="price-badge">Quán ruột</span>' : ""}
-        </div>
-        <div class="rating-strip">${ratings}</div>
-        <div class="place-meta">
-          <button class="text-button" type="button" data-action="edit" data-id="${escapeAttr(place.id)}">Sửa</button>
-          <button class="text-button" type="button" data-action="favorite" data-id="${escapeAttr(place.id)}">
-            ${place.favorite ? "Bỏ ruột" : "Quán ruột"}
-          </button>
+          <div class="place-meta">
+            <span class="type-badge" style="background:${escapeAttr(type.color)}">
+              <i data-lucide="${escapeAttr(type.icon)}"></i>
+              ${escapeHtml(type.label)}
+            </span>
+            <span class="price-badge">${formatPrice(place.priceLevel)}</span>
+            ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
+            ${status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : ""}
+            ${place.visits.length ? `<span class="price-badge">${place.visits.length} lần ghé</span>` : ""}
+            ${place.favorite ? '<span class="price-badge">Quán ruột</span>' : ""}
+          </div>
+          <div class="rating-strip">${ratings}</div>
+          ${tags ? `<div class="place-meta">${tags}</div>` : ""}
+          <div class="place-meta">
+            <button class="text-button" type="button" data-action="edit" data-id="${escapeAttr(place.id)}">Sửa</button>
+            <button class="text-button" type="button" data-action="favorite" data-id="${escapeAttr(place.id)}">
+              ${place.favorite ? "Bỏ ruột" : "Quán ruột"}
+            </button>
+          </div>
         </div>
       </article>
     `;
@@ -472,6 +681,10 @@ function getFilteredPlaces() {
       const matchesPurpose = [...activePurposes].every((key) => (place.ratings[key] || 0) >= 3);
       if (!matchesPurpose) return false;
     }
+    if (activeTags.size > 0) {
+      const matchesTags = [...activeTags].every((tag) => place.tags.includes(tag));
+      if (!matchesTags) return false;
+    }
     if (!term) return true;
     const haystack = normalizeText([
       place.name,
@@ -485,6 +698,8 @@ function getFilteredPlaces() {
 
   return filtered.sort((a, b) => {
     switch (els.sortMode.value) {
+      case "distance":
+        return getSortableDistance(a) - getSortableDistance(b) || getFitScore(b) - getFitScore(a);
       case "recent":
         return b.updatedAt - a.updatedAt;
       case "price":
@@ -506,6 +721,103 @@ function getFitScore(place) {
   return clamp(base * 100 + favoriteBoost + recentBoost, 0, 100);
 }
 
+function getMoodScore(place, mood) {
+  const rating = (key) => place.ratings[key] || 0;
+  let score;
+  switch (mood) {
+    case "quick":
+      score = rating("taste") * 12 + (place.type === "food" ? 18 : 0) + (place.priceLevel <= 2 ? 10 : 0);
+      if (hasTagLike(place, ["nhanh", "trưa", "an nhanh", "ăn nhanh"])) score += 18;
+      if (rating("quiet") <= 2) score += 4;
+      break;
+    case "date":
+      score = rating("date") * 18 + rating("taste") * 6 + rating("quiet") * 5;
+      break;
+    case "quiet":
+      score = rating("quiet") * 20 + rating("work") * 5;
+      break;
+    case "taste":
+      score = rating("taste") * 20 + (place.favorite ? 8 : 0);
+      break;
+    case "nearby":
+      score = userLocation ? Math.max(0, 100 - getDistanceFromUser(place) / 80) + getFitScore(place) * 0.25 : 0;
+      break;
+    case "work":
+    default:
+      score = rating("work") * 16 + rating("power") * 10 + rating("quiet") * 7;
+      if (hasTagLike(place, ["wifi", "ngồi lâu", "ngoi lau", "ổ cắm", "o cam"])) score += 10;
+      break;
+  }
+  const status = getOpeningStatus(place);
+  if (status.state === "open") score += 6;
+  if (place.favorite) score += 5;
+  return clamp(score, 0, 100);
+}
+
+function hasTagLike(place, needles) {
+  const text = normalizeText(place.tags.join(" "));
+  return needles.some((needle) => text.includes(normalizeText(needle)));
+}
+
+function getDistanceFromUser(place) {
+  if (!userLocation) return null;
+  return haversineMeters(userLocation.lat, userLocation.lng, place.lat, place.lng);
+}
+
+function getSortableDistance(place) {
+  const distance = getDistanceFromUser(place);
+  return distance == null ? Number.POSITIVE_INFINITY : distance;
+}
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const earthRadius = 6371000;
+  const toRad = (value) => value * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(distance) {
+  if (distance == null || !Number.isFinite(distance)) return "";
+  if (distance < 1000) return `Cách bạn ${Math.round(distance)}m`;
+  return `Cách bạn ${(distance / 1000).toFixed(distance < 10000 ? 1 : 0)}km`;
+}
+
+function getOpeningStatus(place, now = new Date()) {
+  const hours = place.openingHours;
+  if (!hours?.open || !hours?.close || !hours.days?.length) {
+    return { state: "", label: "" };
+  }
+
+  const today = now.getDay();
+  const yesterday = (today + 6) % 7;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const open = timeToMinutes(hours.open);
+  const close = timeToMinutes(hours.close);
+  const overnight = close <= open;
+  const openToday = hours.days.includes(today);
+  const openYesterday = hours.days.includes(yesterday);
+
+  let isOpen = false;
+  if (overnight) {
+    isOpen = (openToday && minutes >= open) || (openYesterday && minutes < close);
+  } else {
+    isOpen = openToday && minutes >= open && minutes < close;
+  }
+
+  return {
+    state: isOpen ? "open" : "closed",
+    label: isOpen ? "Đang mở" : "Có thể đóng",
+  };
+}
+
+function timeToMinutes(value) {
+  const [hour, minute] = String(value || "00:00").split(":").map(Number);
+  return hour * 60 + minute;
+}
+
 function createMarkerIcon(place, selected) {
   const type = getType(place.type);
   return L.divIcon({
@@ -523,6 +835,8 @@ function createMarkerIcon(place, selected) {
 
 function createPopup(place) {
   const type = getType(place.type);
+  const status = getOpeningStatus(place);
+  const distance = formatDistance(getDistanceFromUser(place));
   return `
     <div class="place-popup">
       <h3>${escapeHtml(place.name)}</h3>
@@ -530,6 +844,8 @@ function createPopup(place) {
       <div class="place-popup-row">
         <span class="type-badge" style="background:${escapeAttr(type.color)}">${escapeHtml(type.label)}</span>
         <span class="price-badge">${formatPrice(place.priceLevel)}</span>
+        ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
+        ${status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : ""}
         <span class="score-badge">${Math.round(getFitScore(place))}</span>
       </div>
     </div>
@@ -558,6 +874,9 @@ function openEditor(place = null) {
     notes: "",
     lastVisit: today,
     favorite: false,
+    images: [],
+    openingHours: { days: DAY_OPTIONS.map((day) => day.key), open: "", close: "" },
+    visits: [],
   };
 
   els.placeId.value = data.id || "";
@@ -570,12 +889,24 @@ function openEditor(place = null) {
   els.placeTags.value = (data.tags || []).join(", ");
   els.placeNotes.value = data.notes || "";
   els.favoritePlace.checked = Boolean(data.favorite);
+  editorPhotos = normalizeImages(data.images);
+  editorVisits = normalizeVisits(data.visits);
+  editorOpeningDays = new Set(normalizeOpeningHours(data.openingHours).days);
+  els.openingOpen.value = data.openingHours?.open || "";
+  els.openingClose.value = data.openingHours?.close || "";
+  els.visitDate.value = today;
+  els.visitRating.value = "4";
+  els.visitNote.value = "";
 
   PURPOSES.forEach((purpose) => {
     const range = els.ratingFields.querySelector(`[data-rating="${purpose.key}"]`);
     range.value = String(data.ratings?.[purpose.key] ?? 3);
     range.parentElement.querySelector("output").value = range.value;
   });
+
+  renderEditorPhotos();
+  renderOpeningDays();
+  renderVisitHistory();
 
   setTimeout(() => {
     map?.invalidateSize();
@@ -587,7 +918,115 @@ function closeEditor() {
   els.workspace.classList.remove("editor-open");
   els.editorPanel.setAttribute("aria-hidden", "true");
   els.placeForm.reset();
+  editorPhotos = [];
+  editorVisits = [];
+  editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
+  renderEditorPhotos();
+  renderVisitHistory();
   setTimeout(() => map?.invalidateSize(), 50);
+}
+
+async function handlePhotoSelection() {
+  const files = [...(els.placePhotosInput.files || [])].filter((file) => file.type.startsWith("image/"));
+  els.placePhotosInput.value = "";
+  if (files.length === 0) return;
+
+  try {
+    const remainingSlots = Math.max(0, 8 - editorPhotos.length);
+    const selected = files.slice(0, remainingSlots);
+    const photos = await Promise.all(selected.map(readCompressedPhoto));
+    editorPhotos = [...editorPhotos, ...photos.filter(Boolean)];
+    renderEditorPhotos();
+    if (files.length > selected.length) {
+      showStatus("Mỗi quán lưu tối đa 8 ảnh.");
+    }
+  } catch {
+    showStatus("Không đọc được ảnh.", true);
+  }
+}
+
+function readCompressedPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = reject;
+      image.onload = () => {
+        const maxSize = 900;
+        const ratio = Math.min(1, maxSize / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+        const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(image, 0, 0, width, height);
+        resolve({
+          id: makeId(),
+          dataUrl: canvas.toDataURL("image/jpeg", 0.82),
+        });
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderEditorPhotos() {
+  els.photoGallery.innerHTML = editorPhotos.map((photo) => `
+    <div class="photo-tile">
+      <img src="${escapeAttr(photo.dataUrl)}" alt="Ảnh quán" />
+      <button type="button" data-photo-id="${escapeAttr(photo.id)}" title="Xóa ảnh" aria-label="Xóa ảnh">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+  `).join("");
+  refreshIcons();
+}
+
+function renderOpeningDays() {
+  els.openingDays.querySelectorAll("[data-day]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(editorOpeningDays.has(Number(button.dataset.day))));
+  });
+}
+
+function addEditorVisit() {
+  const date = els.visitDate.value || new Date().toISOString().slice(0, 10);
+  editorVisits.unshift({
+    id: makeId(),
+    date,
+    rating: clampRating(els.visitRating.value) || 3,
+    note: els.visitNote.value.trim(),
+  });
+  editorVisits = normalizeVisits(editorVisits);
+  els.visitNote.value = "";
+  syncLastVisitFromHistory();
+  renderVisitHistory();
+}
+
+function syncLastVisitFromHistory() {
+  const latest = normalizeVisits(editorVisits)[0]?.date || "";
+  if (latest) els.lastVisit.value = latest;
+}
+
+function renderVisitHistory() {
+  if (editorVisits.length === 0) {
+    els.visitHistoryList.innerHTML = "";
+    return;
+  }
+  els.visitHistoryList.innerHTML = editorVisits.map((visit) => `
+    <div class="visit-item">
+      <span>
+        <strong>${escapeHtml(formatDate(visit.date))} • ${visit.rating}/5</strong>
+        ${visit.note ? `<span>${escapeHtml(visit.note)}</span>` : ""}
+      </span>
+      <button type="button" data-visit-id="${escapeAttr(visit.id)}" title="Xóa lần ghé" aria-label="Xóa lần ghé">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+  `).join("");
+  refreshIcons();
 }
 
 function savePlace(event) {
@@ -612,6 +1051,13 @@ function savePlace(event) {
     notes: els.placeNotes.value,
     lastVisit: els.lastVisit.value,
     favorite: els.favoritePlace.checked,
+    images: editorPhotos,
+    openingHours: {
+      days: [...editorOpeningDays],
+      open: els.openingOpen.value,
+      close: els.openingClose.value,
+    },
+    visits: editorVisits,
     createdAt: getPlace(existingId)?.createdAt || now,
     updatedAt: now,
   });
@@ -682,6 +1128,7 @@ function isEditorOpen() {
 function resetFilters() {
   activeTypes = new Set(TYPES.map((type) => type.key));
   activePurposes = new Set();
+  activeTags = new Set();
   els.globalSearch.value = "";
   els.sortMode.value = "fit";
   syncFilterButtons();
@@ -694,6 +1141,9 @@ function syncFilterButtons() {
   });
   els.purposeFilters.querySelectorAll("[data-key]").forEach((button) => {
     button.setAttribute("aria-pressed", String(activePurposes.has(button.dataset.key)));
+  });
+  els.tagFilters.querySelectorAll("[data-tag]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(activeTags.has(button.dataset.tag)));
   });
 }
 
@@ -939,6 +1389,7 @@ function locateUser() {
   navigator.geolocation.getCurrentPosition(
     (position) => {
       const { latitude, longitude } = position.coords;
+      userLocation = { lat: latitude, lng: longitude };
       map.setView([latitude, longitude], 15);
       if (userMarker) userMarker.remove();
       userMarker = L.circleMarker([latitude, longitude], {
@@ -948,6 +1399,7 @@ function locateUser() {
         fillColor: "#176b68",
         fillOpacity: 1,
       }).addTo(map);
+      render();
       showStatus("Đã cập nhật vị trí.");
     },
     () => showStatus("Không lấy được vị trí.", true),
@@ -1034,6 +1486,12 @@ function daysSince(dateString) {
   const time = new Date(dateString).getTime();
   if (!Number.isFinite(time)) return 999;
   return Math.max(0, (Date.now() - time) / 86400000);
+}
+
+function formatDate(dateString) {
+  const [year, month, day] = String(dateString || "").split("-");
+  if (!year || !month || !day) return "";
+  return `${day}/${month}/${year}`;
 }
 
 function makeId() {

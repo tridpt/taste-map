@@ -73,15 +73,39 @@
             <div id="purposeFilters" class="chip-group" role="group" aria-label="Gu hôm nay"></div>
           </div>
 
+          <div class="field">
+            <label>Tag quen</label>
+            <div id="tagFilters" class="chip-group tag-filter-list" role="group" aria-label="Tag quen"></div>
+          </div>
+
           <div class="field compact">
             <label for="sortMode">Sắp xếp</label>
             <select id="sortMode">
               <option value="fit">Hợp gu nhất</option>
+              <option value="distance">Gần tôi nhất</option>
               <option value="recent">Mới cập nhật</option>
               <option value="price">Giá thấp trước</option>
               <option value="name">Tên A-Z</option>
             </select>
           </div>
+        </section>
+
+        <section class="panel recommendation-panel">
+          <div class="panel-heading">
+            <h2>Hôm nay đi đâu?</h2>
+          </div>
+          <div class="field compact">
+            <label for="suggestMood">Mood</label>
+            <select id="suggestMood">
+              <option value="work">Làm việc</option>
+              <option value="date">Đi date</option>
+              <option value="quiet">Yên tĩnh</option>
+              <option value="quick">Ăn nhanh</option>
+              <option value="taste">Ăn ngon</option>
+              <option value="nearby">Gần tôi</option>
+            </select>
+          </div>
+          <div id="recommendationList" class="recommendation-list"></div>
         </section>
 
         <section class="panel list-panel">
@@ -182,6 +206,52 @@
           </div>
 
           <div id="ratingFields" class="rating-fields"></div>
+
+          <div class="field">
+            <label>Ảnh quán</label>
+            <div class="photo-actions">
+              <button id="addPhotoBtn" class="ghost-button" type="button">
+                <i data-lucide="image-plus"></i>
+                <span>Thêm ảnh</span>
+              </button>
+              <input id="placePhotosInput" type="file" accept="image/*" multiple hidden />
+            </div>
+            <div id="photoGallery" class="photo-gallery"></div>
+          </div>
+
+          <div class="field">
+            <label>Giờ mở cửa</label>
+            <div id="openingDays" class="day-toggle-group"></div>
+            <div class="two-col">
+              <div class="field inner-field">
+                <label for="openingOpen">Mở</label>
+                <input id="openingOpen" type="time" />
+              </div>
+              <div class="field inner-field">
+                <label for="openingClose">Đóng</label>
+                <input id="openingClose" type="time" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Lịch sử ghé</label>
+            <div class="visit-entry">
+              <input id="visitDate" type="date" />
+              <select id="visitRating">
+                <option value="5">5/5</option>
+                <option value="4">4/5</option>
+                <option value="3">3/5</option>
+                <option value="2">2/5</option>
+                <option value="1">1/5</option>
+              </select>
+              <button id="addVisitBtn" class="ghost-button" type="button">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
+            <input id="visitNote" type="text" maxlength="160" placeholder="Ghi chú lần ghé" />
+            <div id="visitHistoryList" class="visit-history-list"></div>
+          </div>
 
           <div class="field">
             <label for="placeTags">Tag riêng</label>

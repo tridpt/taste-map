@@ -267,11 +267,11 @@ svg {
 .sidebar {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border-right: 1px solid var(--line);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .panel {
@@ -403,6 +403,74 @@ svg {
   border-color: var(--mustard);
 }
 
+.tag-filter-list:empty::before {
+  content: "Chưa có tag";
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tag-filter-list {
+  max-height: 96px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.tag-filter-list .chip-button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.recommendation-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recommendation-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: var(--surface-soft);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+}
+
+.recommendation-item:hover {
+  border-color: var(--teal);
+  background: #fff;
+}
+
+.recommendation-item strong,
+.recommendation-item span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommendation-item span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.recommendation-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .place-list {
   min-height: 0;
   display: flex;
@@ -415,6 +483,7 @@ svg {
 .place-item {
   width: 100%;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   padding: 11px;
   text-align: left;
@@ -423,6 +492,26 @@ svg {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
+}
+
+.place-main {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.place-with-photo {
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: start;
+}
+
+.place-thumb {
+  width: 74px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
 }
 
 .place-item:hover,
@@ -478,6 +567,31 @@ svg {
 .price-badge {
   color: var(--ink);
   background: var(--surface-soft);
+}
+
+.status-badge {
+  color: #fff;
+  background: var(--surface-strong);
+}
+
+.status-badge.open {
+  background: var(--teal);
+}
+
+.status-badge.closed {
+  background: var(--tomato);
+}
+
+.tag-badge {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .place-meta {
@@ -730,6 +844,123 @@ svg {
   font-size: 13px;
   font-weight: 800;
   text-align: right;
+}
+
+.photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.photo-tile {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  aspect-ratio: 1;
+  background: var(--surface-soft);
+}
+
+.photo-tile img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.photo-tile button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  color: #fff;
+  background: rgba(17, 25, 22, 0.82);
+  border: 0;
+  border-radius: var(--radius);
+}
+
+.day-toggle-group {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.day-toggle {
+  min-height: 32px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.day-toggle[aria-pressed="true"] {
+  color: #fff;
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.inner-field {
+  margin-bottom: 0;
+}
+
+.visit-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px 42px;
+  gap: 8px;
+}
+
+.visit-entry input,
+.visit-entry select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 9px;
+}
+
+.visit-history-list {
+  display: grid;
+  gap: 7px;
+}
+
+.visit-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  background: var(--surface-soft);
+  border-radius: var(--radius);
+}
+
+.visit-item strong,
+.visit-item span {
+  display: block;
+}
+
+.visit-item span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.visit-item button {
+  width: 30px;
+  min-height: 30px;
+  color: var(--danger);
+  background: transparent;
+  border-radius: var(--radius);
 }
 
 .favorite-row {
