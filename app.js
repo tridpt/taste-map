@@ -135,6 +135,8 @@ function cacheElements() {
     "geoSearch",
     "geoSearchBtn",
     "geoResults",
+    "mapsLinkInput",
+    "mapsImportBtn",
     "pinModeBtn",
     "mapStatus",
     "editorPanel",
@@ -238,6 +240,13 @@ function bindEvents() {
     if (event.key === "Enter") {
       event.preventDefault();
       searchGeo();
+    }
+  });
+  els.mapsImportBtn.addEventListener("click", importFromGoogleMaps);
+  els.mapsLinkInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      importFromGoogleMaps();
     }
   });
   els.pinModeBtn.addEventListener("click", () => setPinMode(!pinMode));
@@ -704,19 +713,175 @@ async function searchGeo() {
   els.geoResults.classList.add("hidden");
 
   try {
-    const url = new URL("https://nominatim.openstreetmap.org/search");
-    url.searchParams.set("format", "jsonv2");
-    url.searchParams.set("limit", "6");
-    url.searchParams.set("accept-language", "vi");
-    url.searchParams.set("q", query);
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error("Search failed");
-    const data = await res.json();
+    const data = await geocodeQuery(query);
     renderGeoResults(data);
   } catch {
     showStatus("Không tìm được vị trí.", true);
   } finally {
     els.geoSearchBtn.disabled = false;
+  }
+}
+
+async function importFromGoogleMaps() {
+  const raw = els.mapsLinkInput.value.trim();
+  if (!raw) {
+    showStatus("Hãy dán link Google Maps.", true);
+    return;
+  }
+
+  const parsed = parseGoogleMapsInput(raw);
+  if (parsed.shortUrl) {
+    showStatus("Link rút gọn Google Maps cần mở ra rồi copy URL đầy đủ.", true);
+    return;
+  }
+
+  els.mapsImportBtn.disabled = true;
+  try {
+    let imported = parsed;
+    if (!hasCoordinates(imported) && imported.query) {
+      const results = await geocodeQuery(imported.query, 1);
+      const first = results[0];
+      if (!first) throw new Error("No result");
+      imported = {
+        ...imported,
+        name: imported.name || first.name || first.display_name?.split(",")[0],
+        address: first.display_name || imported.address || "",
+        lat: Number(first.lat),
+        lng: Number(first.lon),
+      };
+    }
+
+    if (!hasCoordinates(imported)) {
+      showStatus("Chưa lấy được tọa độ từ link này.", true);
+      return;
+    }
+
+    applyImportedMapPlace(imported);
+    els.mapsLinkInput.value = "";
+  } catch {
+    showStatus("Không nhập được link Google Maps.", true);
+  } finally {
+    els.mapsImportBtn.disabled = false;
+  }
+}
+
+async function geocodeQuery(query, limit = 6) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("accept-language", "vi");
+  url.searchParams.set("q", query);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error("Search failed");
+  return res.json();
+}
+
+function applyImportedMapPlace(imported) {
+  const lat = Number(imported.lat);
+  const lng = Number(imported.lng);
+  map?.setView([lat, lng], Math.max(map.getZoom(), 16));
+  openEditor();
+  setFormCoordinates(lat, lng);
+  if (imported.name) els.placeName.value = imported.name;
+  if (imported.address) els.placeAddress.value = imported.address;
+  else if (imported.query && !els.placeName.value) els.placeName.value = imported.query;
+  reverseLookup(lat, lng);
+  showStatus("Đã nhập vị trí từ Google Maps.");
+}
+
+function parseGoogleMapsInput(raw) {
+  const text = raw.trim();
+  const result = { query: "", name: "", address: "", lat: null, lng: null, shortUrl: false };
+  const url = parseUrl(text);
+
+  if (!url) {
+    result.query = text;
+    return result;
+  }
+
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  result.shortUrl = host === "maps.app.goo.gl" || host === "goo.gl" || host === "g.co";
+  if (result.shortUrl) return result;
+
+  const decoded = safeDecode(`${url.pathname}${url.search}${url.hash}`);
+  const coordinates = findCoordinates(decoded) || findCoordinates(url.searchParams.get("q")) || findCoordinates(url.searchParams.get("query"));
+  if (coordinates) {
+    result.lat = coordinates.lat;
+    result.lng = coordinates.lng;
+  }
+
+  result.name = extractGoogleMapsName(url);
+  result.query = extractGoogleMapsQuery(url) || result.name;
+  return result;
+}
+
+function parseUrl(value) {
+  try {
+    return new URL(value);
+  } catch {
+    try {
+      return new URL(`https://${value}`);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractGoogleMapsName(url) {
+  const parts = url.pathname.split("/").filter(Boolean);
+  const placeIndex = parts.findIndex((part) => part.toLowerCase() === "place");
+  if (placeIndex >= 0 && parts[placeIndex + 1]) {
+    return cleanupPlaceName(parts[placeIndex + 1]);
+  }
+  const query = url.searchParams.get("query") || url.searchParams.get("q") || "";
+  return findCoordinates(query) ? "" : cleanupPlaceName(query);
+}
+
+function extractGoogleMapsQuery(url) {
+  const direct = url.searchParams.get("query") || url.searchParams.get("q");
+  if (direct && !findCoordinates(direct)) return cleanupPlaceName(direct);
+  return extractGoogleMapsName(url);
+}
+
+function cleanupPlaceName(value) {
+  return safeDecode(value)
+    .replace(/\+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findCoordinates(value) {
+  if (!value) return null;
+  const text = safeDecode(value);
+  const patterns = [
+    /@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:,|$)/,
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+    /(?:^|[?&=,/ ])(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})(?:$|[&,/ ])/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    if (isValidCoordinatePair(lat, lng)) return { lat, lng };
+  }
+  return null;
+}
+
+function hasCoordinates(value) {
+  return isValidCoordinatePair(Number(value.lat), Number(value.lng));
+}
+
+function isValidCoordinatePair(lat, lng) {
+  return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+}
+
+function safeDecode(value) {
+  try {
+    return decodeURIComponent(String(value || ""));
+  } catch {
+    return String(value || "");
   }
 }
 

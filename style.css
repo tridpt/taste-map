@@ -568,6 +568,34 @@ svg {
   box-shadow: var(--shadow);
 }
 
+.maps-import {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.maps-import:focus-within {
+  border-color: var(--teal);
+  background: #fff;
+}
+
+.maps-import input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+}
+
 .geo-results {
   position: absolute;
   top: calc(100% + 7px);
