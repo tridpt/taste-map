@@ -41,6 +41,7 @@ let activeTags = new Set();
 let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
+let pendingImports = [];
 let pinMode = false;
 let statusTimer = null;
 
@@ -128,6 +129,7 @@ function init() {
   render();
   refreshIcons();
   registerServiceWorker();
+  handleSharedLaunch();
 }
 
 function cacheElements() {
@@ -154,7 +156,12 @@ function cacheElements() {
     "geoSearchBtn",
     "geoResults",
     "mapsLinkInput",
+    "mapsClipboardBtn",
     "mapsImportBtn",
+    "importQueuePanel",
+    "saveImportQueueBtn",
+    "clearImportQueueBtn",
+    "importQueueList",
     "pinModeBtn",
     "mapStatus",
     "editorPanel",
@@ -283,10 +290,16 @@ function bindEvents() {
   els.mapsImportBtn.addEventListener("click", importFromGoogleMaps);
   els.mapsLinkInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
-      event.preventDefault();
-      importFromGoogleMaps();
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        importFromGoogleMaps();
+      }
     }
   });
+  els.mapsClipboardBtn.addEventListener("click", pasteMapsFromClipboard);
+  els.saveImportQueueBtn.addEventListener("click", saveAllPendingImports);
+  els.clearImportQueueBtn.addEventListener("click", clearPendingImports);
+  els.importQueueList.addEventListener("click", handleImportQueueClick);
   els.pinModeBtn.addEventListener("click", () => setPinMode(!pinMode));
 
   els.typeFilters.addEventListener("click", (event) => {
@@ -853,11 +866,12 @@ function createPopup(place) {
 }
 
 function openEditor(place = null) {
-  const isEdit = Boolean(place);
+  const hasDraft = Boolean(place);
+  const isEdit = Boolean(place?.id);
   els.workspace.classList.add("editor-open");
   els.editorPanel.setAttribute("aria-hidden", "false");
-  els.editorMode.textContent = isEdit ? "Đang sửa" : "Quán mới";
-  els.editorTitle.textContent = isEdit ? place.name : "Lưu quán";
+  els.editorMode.textContent = isEdit ? "Đang sửa" : (hasDraft ? "Nhập từ Maps" : "Quán mới");
+  els.editorTitle.textContent = hasDraft ? place.name : "Lưu quán";
   els.deletePlaceBtn.classList.toggle("hidden", !isEdit);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -1179,40 +1193,101 @@ async function importFromGoogleMaps() {
     return;
   }
 
-  const parsed = parseGoogleMapsInput(raw);
-  if (parsed.shortUrl) {
-    showStatus("Link rút gọn Google Maps cần mở ra rồi copy URL đầy đủ.", true);
-    return;
-  }
-
   els.mapsImportBtn.disabled = true;
   try {
-    let imported = parsed;
-    if (!hasCoordinates(imported) && imported.query) {
-      const results = await geocodeQuery(imported.query, 1);
-      const first = results[0];
-      if (!first) throw new Error("No result");
-      imported = {
-        ...imported,
-        name: imported.name || first.name || first.display_name?.split(",")[0],
-        address: first.display_name || imported.address || "",
-        lat: Number(first.lat),
-        lng: Number(first.lon),
-      };
-    }
-
-    if (!hasCoordinates(imported)) {
-      showStatus("Chưa lấy được tọa độ từ link này.", true);
-      return;
-    }
-
-    applyImportedMapPlace(imported);
-    els.mapsLinkInput.value = "";
+    await processGoogleMapsImportText(raw, { openSingle: true });
   } catch {
     showStatus("Không nhập được link Google Maps.", true);
   } finally {
     els.mapsImportBtn.disabled = false;
   }
+}
+
+async function pasteMapsFromClipboard() {
+  if (!navigator.clipboard?.readText) {
+    showStatus("Trình duyệt chưa cho đọc clipboard.", true);
+    return;
+  }
+
+  els.mapsClipboardBtn.disabled = true;
+  try {
+    const text = (await navigator.clipboard.readText()).trim();
+    if (!text) {
+      showStatus("Clipboard đang trống.", true);
+      return;
+    }
+    els.mapsLinkInput.value = text;
+    await processGoogleMapsImportText(text, { openSingle: true });
+  } catch {
+    showStatus("Không đọc được clipboard.", true);
+  } finally {
+    els.mapsClipboardBtn.disabled = false;
+  }
+}
+
+async function processGoogleMapsImportText(raw, { openSingle = false } = {}) {
+  const candidates = splitImportCandidates(raw);
+  if (candidates.length === 0) {
+    showStatus("Không tìm thấy link hoặc nội dung để nhập.", true);
+    return;
+  }
+
+  const resolved = [];
+  const skipped = [];
+  for (const candidate of candidates) {
+    const parsed = parseGoogleMapsInput(candidate);
+    if (parsed.shortUrl) {
+      skipped.push("short");
+      continue;
+    }
+    try {
+      const imported = await resolveImportedPlace(parsed);
+      if (hasCoordinates(imported)) {
+        resolved.push(imported);
+      } else {
+        skipped.push("missing");
+      }
+    } catch {
+      skipped.push("missing");
+    }
+  }
+
+  if (resolved.length === 0) {
+    const hasShort = skipped.includes("short");
+    showStatus(hasShort
+      ? "Link rút gọn Google Maps cần mở ra rồi copy URL đầy đủ."
+      : "Chưa lấy được tọa độ từ nội dung này.", true);
+    return;
+  }
+
+  els.mapsLinkInput.value = "";
+  if (resolved.length === 1 && openSingle) {
+    applyImportedMapPlace(resolved[0]);
+  } else {
+    enqueuePendingImports(resolved);
+    showStatus(`Đã thêm ${resolved.length} quán vào hàng chờ.`);
+  }
+
+  if (skipped.length > 0) {
+    showStatus(`Đã nhập ${resolved.length} mục; bỏ qua ${skipped.length} mục chưa đọc được.`, true);
+  }
+}
+
+async function resolveImportedPlace(parsed) {
+  let imported = parsed;
+  if (!hasCoordinates(imported) && imported.query) {
+    const results = await geocodeQuery(imported.query, 1);
+    const first = results[0];
+    if (!first) return imported;
+    imported = {
+      ...imported,
+      name: imported.name || first.name || first.display_name?.split(",")[0],
+      address: first.display_name || imported.address || "",
+      lat: Number(first.lat),
+      lng: Number(first.lon),
+    };
+  }
+  return imported;
 }
 
 async function geocodeQuery(query, limit = 6) {
@@ -1239,9 +1314,149 @@ function applyImportedMapPlace(imported) {
   showStatus("Đã nhập vị trí từ Google Maps.");
 }
 
+function enqueuePendingImports(imports) {
+  const existingKeys = new Set(pendingImports.map((item) => getImportKey(item)));
+  imports.forEach((item) => {
+    const normalized = normalizeImportedPlace(item);
+    const key = getImportKey(normalized);
+    if (existingKeys.has(key)) return;
+    existingKeys.add(key);
+    pendingImports.push({ ...normalized, pendingId: makeId() });
+  });
+  renderImportQueue();
+}
+
+function renderImportQueue() {
+  els.importQueuePanel.classList.toggle("hidden", pendingImports.length === 0);
+  els.importQueueList.innerHTML = pendingImports.map((item) => `
+    <div class="import-queue-item" data-pending-id="${escapeAttr(item.pendingId)}">
+      <span>
+        <strong>${escapeHtml(item.name || item.query || "Quán từ Google Maps")}</strong>
+        <span>${escapeHtml(formatImportMeta(item))}</span>
+      </span>
+      <div class="import-queue-actions">
+        <button class="icon-button" type="button" data-import-action="edit" title="Sửa trước khi lưu" aria-label="Sửa trước khi lưu">
+          <i data-lucide="pencil"></i>
+        </button>
+        <button class="icon-button" type="button" data-import-action="save" title="Lưu quán" aria-label="Lưu quán">
+          <i data-lucide="save"></i>
+        </button>
+        <button class="icon-button" type="button" data-import-action="remove" title="Bỏ qua" aria-label="Bỏ qua">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+    </div>
+  `).join("");
+  refreshIcons();
+}
+
+function handleImportQueueClick(event) {
+  const button = event.target.closest("[data-import-action]");
+  const itemEl = event.target.closest("[data-pending-id]");
+  if (!button || !itemEl) return;
+
+  const id = itemEl.dataset.pendingId;
+  const item = pendingImports.find((pending) => pending.pendingId === id);
+  if (!item) return;
+
+  switch (button.dataset.importAction) {
+    case "edit":
+      pendingImports = pendingImports.filter((pending) => pending.pendingId !== id);
+      renderImportQueue();
+      openEditor(createPlaceDraftFromImport(item));
+      showStatus("Đang sửa quán từ hàng chờ.");
+      break;
+    case "save":
+      saveImportedPlace(item);
+      pendingImports = pendingImports.filter((pending) => pending.pendingId !== id);
+      renderImportQueue();
+      break;
+    case "remove":
+      pendingImports = pendingImports.filter((pending) => pending.pendingId !== id);
+      renderImportQueue();
+      break;
+  }
+}
+
+function saveAllPendingImports() {
+  if (pendingImports.length === 0) return;
+  const count = pendingImports.length;
+  pendingImports.forEach(saveImportedPlace);
+  pendingImports = [];
+  renderImportQueue();
+  showStatus(`Đã lưu ${count} quán.`);
+}
+
+function clearPendingImports() {
+  pendingImports = [];
+  renderImportQueue();
+}
+
+function saveImportedPlace(imported) {
+  const now = Date.now();
+  const place = normalizePlace({
+    ...createPlaceDraftFromImport(imported),
+    id: makeId(),
+    createdAt: now,
+    updatedAt: now,
+  });
+  places.unshift(place);
+  selectedId = place.id;
+  savePlaces();
+  render();
+  selectPlace(place.id, true);
+  showStatus("Đã lưu quán từ Google Maps.");
+}
+
+function createPlaceDraftFromImport(imported) {
+  const normalized = normalizeImportedPlace(imported);
+  return {
+    id: "",
+    name: normalized.name || normalized.query || "Quán từ Google Maps",
+    type: "cafe",
+    address: normalized.address || normalized.query || "",
+    lat: Number(normalized.lat),
+    lng: Number(normalized.lng),
+    priceLevel: 2,
+    ratings: { taste: 3, quiet: 3, power: 3, date: 3, work: 3 },
+    tags: [],
+    notes: normalized.source ? `Nguồn: ${normalized.source}` : "",
+    lastVisit: "",
+    favorite: false,
+    images: [],
+    openingHours: { days: DAY_OPTIONS.map((day) => day.key), open: "", close: "" },
+    visits: [],
+  };
+}
+
+function normalizeImportedPlace(imported) {
+  return {
+    pendingId: imported.pendingId || "",
+    name: String(imported.name || "").trim(),
+    address: String(imported.address || "").trim(),
+    query: String(imported.query || "").trim(),
+    source: String(imported.source || "").trim(),
+    lat: Number(imported.lat),
+    lng: Number(imported.lng),
+  };
+}
+
+function getImportKey(item) {
+  const lat = Number(item.lat).toFixed(6);
+  const lng = Number(item.lng).toFixed(6);
+  return `${normalizeText(item.name || item.query)}:${lat},${lng}`;
+}
+
+function formatImportMeta(item) {
+  const parts = [];
+  if (hasCoordinates(item)) parts.push(`${Number(item.lat).toFixed(5)}, ${Number(item.lng).toFixed(5)}`);
+  if (item.address) parts.push(item.address);
+  return parts.join(" • ") || "Chưa có địa chỉ";
+}
+
 function parseGoogleMapsInput(raw) {
-  const text = raw.trim();
-  const result = { query: "", name: "", address: "", lat: null, lng: null, shortUrl: false };
+  const text = cleanupSharedText(raw);
+  const result = { query: "", name: "", address: "", source: text, lat: null, lng: null, shortUrl: false };
   const url = parseUrl(text);
 
   if (!url) {
@@ -1254,7 +1469,9 @@ function parseGoogleMapsInput(raw) {
   if (result.shortUrl) return result;
 
   const decoded = safeDecode(`${url.pathname}${url.search}${url.hash}`);
-  const coordinates = findCoordinates(decoded) || findCoordinates(url.searchParams.get("q")) || findCoordinates(url.searchParams.get("query"));
+  const coordinates = findCoordinates(decoded)
+    || findCoordinatesFromSearchParams(url.searchParams)
+    || findCoordinates(text);
   if (coordinates) {
     result.lat = coordinates.lat;
     result.lng = coordinates.lng;
@@ -1263,6 +1480,23 @@ function parseGoogleMapsInput(raw) {
   result.name = extractGoogleMapsName(url);
   result.query = extractGoogleMapsQuery(url) || result.name;
   return result;
+}
+
+function splitImportCandidates(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return [];
+
+  const urlMatches = text.match(/https?:\/\/[^\s<>"']+/gi) || [];
+  if (urlMatches.length > 0) {
+    return uniqueStrings(urlMatches.map(cleanupSharedText));
+  }
+
+  const lines = text
+    .split(/\n+/)
+    .map(cleanupSharedText)
+    .filter(Boolean);
+  if (lines.length > 1) return uniqueStrings(lines);
+  return [cleanupSharedText(text)];
 }
 
 function parseUrl(value) {
@@ -1279,16 +1513,17 @@ function parseUrl(value) {
 
 function extractGoogleMapsName(url) {
   const parts = url.pathname.split("/").filter(Boolean);
-  const placeIndex = parts.findIndex((part) => part.toLowerCase() === "place");
-  if (placeIndex >= 0 && parts[placeIndex + 1]) {
-    return cleanupPlaceName(parts[placeIndex + 1]);
+  const namedPathKeys = new Set(["place", "search"]);
+  const namedIndex = parts.findIndex((part) => namedPathKeys.has(part.toLowerCase()));
+  if (namedIndex >= 0 && parts[namedIndex + 1]) {
+    return cleanupPlaceName(parts[namedIndex + 1]);
   }
-  const query = url.searchParams.get("query") || url.searchParams.get("q") || "";
+  const query = getFirstParam(url.searchParams, ["query", "q", "destination", "daddr", "near"]);
   return findCoordinates(query) ? "" : cleanupPlaceName(query);
 }
 
 function extractGoogleMapsQuery(url) {
-  const direct = url.searchParams.get("query") || url.searchParams.get("q");
+  const direct = getFirstParam(url.searchParams, ["query", "q", "destination", "daddr", "near"]);
   if (direct && !findCoordinates(direct)) return cleanupPlaceName(direct);
   return extractGoogleMapsName(url);
 }
@@ -1300,13 +1535,29 @@ function cleanupPlaceName(value) {
     .trim();
 }
 
+function findCoordinatesFromSearchParams(params) {
+  const direct = getFirstParam(params, ["q", "query", "ll", "center", "sll", "destination", "daddr"]);
+  if (direct) {
+    const found = findCoordinates(direct);
+    if (found) return found;
+  }
+
+  for (const [, value] of params.entries()) {
+    const found = findCoordinates(value);
+    if (found) return found;
+  }
+  return null;
+}
+
 function findCoordinates(value) {
   if (!value) return null;
   const text = safeDecode(value);
   const patterns = [
     /@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:,|$)/,
     /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+    /[?&#](?:ll|center|sll|q|query|destination|daddr)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:$|[&,])/,
     /(?:^|[?&=,/ ])(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})(?:$|[&,/ ])/,
+    /(?:^|\s)(-?\d{1,2}\.\d{3,})\s+(-?\d{1,3}\.\d{3,})(?:$|\s)/,
   ];
 
   for (const pattern of patterns) {
@@ -1317,6 +1568,24 @@ function findCoordinates(value) {
     if (isValidCoordinatePair(lat, lng)) return { lat, lng };
   }
   return null;
+}
+
+function getFirstParam(params, names) {
+  for (const name of names) {
+    const value = params.get(name);
+    if (value) return value;
+  }
+  return "";
+}
+
+function cleanupSharedText(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[),.;]+$/g, "");
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function hasCoordinates(value) {
@@ -1535,6 +1804,21 @@ function registerServiceWorker() {
     }).catch((error) => {
       console.warn("Không đăng ký được service worker:", error);
     });
+  });
+}
+
+function handleSharedLaunch() {
+  const params = new URLSearchParams(window.location.search);
+  const sharedParts = ["title", "text", "url"]
+    .map((key) => params.get(key))
+    .filter(Boolean);
+  if (sharedParts.length === 0) return;
+
+  const sharedText = sharedParts.join("\n");
+  els.mapsLinkInput.value = sharedText;
+  history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
+  processGoogleMapsImportText(sharedText, { openSingle: true }).catch(() => {
+    showStatus("Không đọc được nội dung được chia sẻ.", true);
   });
 }
 

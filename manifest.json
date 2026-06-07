@@ -11,6 +11,15 @@
   "background_color": "#f4f7f6",
   "theme_color": "#f4f7f6",
   "categories": ["food", "lifestyle", "maps", "productivity"],
+  "share_target": {
+    "action": "./?share-target=maps",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "icons": [
     {
       "src": "icons/icon-192.png",

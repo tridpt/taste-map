@@ -701,13 +701,82 @@ svg {
   background: #fff;
 }
 
-.maps-import input {
+.maps-import textarea {
   width: 100%;
   min-width: 0;
+  height: 32px;
   border: 0;
   outline: 0;
+  resize: none;
   color: var(--ink);
   background: transparent;
+}
+
+.import-queue {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.import-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.import-queue-head strong {
+  font-size: 13px;
+}
+
+.import-queue-head div {
+  display: flex;
+  gap: 3px;
+}
+
+.import-queue-list {
+  display: grid;
+  gap: 7px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.import-queue-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: var(--surface-soft);
+  border-radius: var(--radius);
+}
+
+.import-queue-item strong,
+.import-queue-item span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-queue-item span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.import-queue-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.import-queue-actions button {
+  width: 30px;
+  min-height: 30px;
 }
 
 .geo-results {

@@ -133,12 +133,25 @@
             </label>
             <label class="maps-import" for="mapsLinkInput">
               <i data-lucide="link" aria-hidden="true"></i>
-              <input id="mapsLinkInput" type="url" autocomplete="off" placeholder="Dán link Google Maps" />
+              <textarea id="mapsLinkInput" rows="2" autocomplete="off" placeholder="Dán link Google Maps, mỗi dòng một link"></textarea>
+              <button id="mapsClipboardBtn" class="icon-button dark" type="button" title="Dán từ clipboard" aria-label="Dán từ clipboard">
+                <i data-lucide="clipboard"></i>
+              </button>
               <button id="mapsImportBtn" class="icon-button dark" type="button" title="Nhập từ Google Maps" aria-label="Nhập từ Google Maps">
                 <i data-lucide="wand-sparkles"></i>
               </button>
             </label>
             <div id="geoResults" class="geo-results hidden"></div>
+            <div id="importQueuePanel" class="import-queue hidden">
+              <div class="import-queue-head">
+                <strong>Chờ xác nhận</strong>
+                <div>
+                  <button id="saveImportQueueBtn" class="text-button" type="button">Lưu tất cả</button>
+                  <button id="clearImportQueueBtn" class="text-button" type="button">Xóa</button>
+                </div>
+              </div>
+              <div id="importQueueList" class="import-queue-list"></div>
+            </div>
           </div>
           <button id="pinModeBtn" class="ghost-button dark" type="button" aria-pressed="false">
             <i data-lucide="crosshair"></i>
