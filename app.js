@@ -1,6 +1,10 @@
 "use strict";
 
 const STORAGE_KEY = "quan-quen-map:places:v1";
+const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
+const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
+const BACKUP_REMINDER_DAYS = 7;
+const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
 const TYPES = [
@@ -42,6 +46,7 @@ let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
 let pendingImports = [];
+let undoStack = [];
 let pinMode = false;
 let statusTimer = null;
 
@@ -127,6 +132,7 @@ function init() {
   initMap();
   bindEvents();
   render();
+  renderDataPanel();
   refreshIcons();
   registerServiceWorker();
   handleSharedLaunch();
@@ -149,6 +155,16 @@ function cacheElements() {
     "sortMode",
     "suggestMood",
     "recommendationList",
+    "backupStatus",
+    "backupReminder",
+    "dismissBackupReminderBtn",
+    "encryptedExportBtn",
+    "plainExportBtn",
+    "gistToken",
+    "gistId",
+    "saveGistSettingsBtn",
+    "pushGistBtn",
+    "pullGistBtn",
     "filteredCount",
     "placeList",
     "emptyState",
@@ -277,9 +293,15 @@ function bindEvents() {
   els.placeForm.addEventListener("submit", savePlace);
   els.deletePlaceBtn.addEventListener("click", deleteCurrentPlace);
   els.locateBtn.addEventListener("click", locateUser);
-  els.exportBtn.addEventListener("click", exportPlaces);
+  els.exportBtn.addEventListener("click", exportEncryptedBackup);
+  els.encryptedExportBtn.addEventListener("click", exportEncryptedBackup);
+  els.plainExportBtn.addEventListener("click", exportPlainBackup);
   els.importTrigger.addEventListener("click", () => els.importFile.click());
   els.importFile.addEventListener("change", importPlaces);
+  els.dismissBackupReminderBtn.addEventListener("click", dismissBackupReminder);
+  els.saveGistSettingsBtn.addEventListener("click", saveGistSettings);
+  els.pushGistBtn.addEventListener("click", pushGistBackup);
+  els.pullGistBtn.addEventListener("click", pullGistBackup);
   els.geoSearchBtn.addEventListener("click", searchGeo);
   els.geoSearch.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -453,6 +475,7 @@ function loadPlaces() {
 
 function savePlaces() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(places));
+  renderDataPanel();
 }
 
 function normalizePlace(place) {
@@ -1082,6 +1105,7 @@ function savePlace(event) {
   }
 
   const index = places.findIndex((item) => item.id === existingId);
+  pushUndoSnapshot(index >= 0 ? "sửa quán" : "thêm quán");
   if (index >= 0) {
     places[index] = place;
   } else {
@@ -1093,7 +1117,7 @@ function savePlace(event) {
   closeEditor();
   render();
   selectPlace(place.id, true);
-  showStatus("Đã lưu quán.");
+  showUndoStatus("Đã lưu quán.");
 }
 
 function deleteCurrentPlace() {
@@ -1103,12 +1127,13 @@ function deleteCurrentPlace() {
   if (!place) return;
   if (!confirm(`Xóa "${place.name}"?`)) return;
 
+  pushUndoSnapshot("xóa quán");
   places = places.filter((item) => item.id !== id);
   if (selectedId === id) selectedId = null;
   savePlaces();
   closeEditor();
   render();
-  showStatus("Đã xóa quán.");
+  showUndoStatus("Đã xóa quán.");
 }
 
 function selectPlace(id, panTo) {
@@ -1124,10 +1149,12 @@ function selectPlace(id, panTo) {
 function toggleFavorite(id) {
   const place = getPlace(id);
   if (!place) return;
+  pushUndoSnapshot("đổi quán ruột");
   place.favorite = !place.favorite;
   place.updatedAt = Date.now();
   savePlaces();
   render();
+  showUndoStatus("Đã cập nhật quán ruột.");
 }
 
 function setFormCoordinates(lat, lng) {
@@ -1381,10 +1408,11 @@ function handleImportQueueClick(event) {
 function saveAllPendingImports() {
   if (pendingImports.length === 0) return;
   const count = pendingImports.length;
+  pushUndoSnapshot("lưu hàng chờ");
   pendingImports.forEach(saveImportedPlace);
   pendingImports = [];
   renderImportQueue();
-  showStatus(`Đã lưu ${count} quán.`);
+  showUndoStatus(`Đã lưu ${count} quán.`);
 }
 
 function clearPendingImports() {
@@ -1393,6 +1421,9 @@ function clearPendingImports() {
 }
 
 function saveImportedPlace(imported) {
+  if (!undoStack.length || undoStack[undoStack.length - 1].label !== "lưu hàng chờ") {
+    pushUndoSnapshot("lưu quán từ Maps");
+  }
   const now = Date.now();
   const place = normalizePlace({
     ...createPlaceDraftFromImport(imported),
@@ -1405,7 +1436,7 @@ function saveImportedPlace(imported) {
   savePlaces();
   render();
   selectPlace(place.id, true);
-  showStatus("Đã lưu quán từ Google Maps.");
+  showUndoStatus("Đã lưu quán từ Google Maps.");
 }
 
 function createPlaceDraftFromImport(imported) {
@@ -1676,21 +1707,37 @@ function locateUser() {
   );
 }
 
-function exportPlaces() {
-  const payload = {
+function createBackupPayload() {
+  return {
     app: "quan-quen-map",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     places,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `quan-quen-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showStatus("Đã tạo file xuất dữ liệu.");
+}
+
+function exportPlainBackup() {
+  downloadJson(createBackupPayload(), `taste-map-backup-${todayStamp()}.json`);
+  markBackupExported();
+  showStatus("Đã tạo file JSON backup.");
+}
+
+async function exportEncryptedBackup() {
+  const password = prompt("Đặt mật khẩu cho file backup mã hóa:");
+  if (password === null) return;
+  if (password.length < 8) {
+    showStatus("Mật khẩu backup tối thiểu 8 ký tự.", true);
+    return;
+  }
+
+  try {
+    const encrypted = await encryptBackup(createBackupPayload(), password);
+    downloadJson(encrypted, `taste-map-backup-encrypted-${todayStamp()}.json`);
+    markBackupExported();
+    showStatus("Đã tạo file backup mã hóa.");
+  } catch {
+    showStatus("Không mã hóa được backup.", true);
+  }
 }
 
 async function importPlaces() {
@@ -1700,19 +1747,307 @@ async function importPlaces() {
 
   try {
     const payload = JSON.parse(await file.text());
+    const importedPayload = payload.encrypted ? await decryptBackupPrompt(payload) : payload;
+    if (!importedPayload) return;
+    const imported = Array.isArray(importedPayload) ? importedPayload : importedPayload.places;
+    if (!Array.isArray(imported)) throw new Error("Invalid backup");
+    const normalized = imported.map(normalizePlace).filter(isValidPlace);
+    if (normalized.length === 0) throw new Error("No valid places");
+    replaceAllPlaces(normalized, `Nhập ${normalized.length} quán và thay dữ liệu hiện tại?`, "Đã nhập dữ liệu.");
+  } catch {
+    showStatus("File nhập không hợp lệ.", true);
+  }
+}
+
+async function decryptBackupPrompt(payload) {
+  const password = prompt("Nhập mật khẩu file backup:");
+  if (password === null) return null;
+  return decryptBackup(payload, password);
+}
+
+async function encryptBackup(payload, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveBackupKey(password, salt);
+  const data = new TextEncoder().encode(JSON.stringify(payload));
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  return {
+    app: "quan-quen-map",
+    version: 2,
+    encrypted: true,
+    algorithm: "AES-GCM",
+    kdf: "PBKDF2-SHA-256",
+    iterations: 250000,
+    createdAt: new Date().toISOString(),
+    salt: arrayBufferToBase64(salt),
+    iv: arrayBufferToBase64(iv),
+    data: arrayBufferToBase64(cipher),
+  };
+}
+
+async function decryptBackup(payload, password) {
+  const salt = base64ToUint8Array(payload.salt);
+  const iv = base64ToUint8Array(payload.iv);
+  const key = await deriveBackupKey(password, salt, payload.iterations || 250000);
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    base64ToUint8Array(payload.data),
+  );
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+async function deriveBackupKey(password, salt, iterations = 250000) {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+function downloadJson(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function todayStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function replaceAllPlaces(nextPlaces, confirmMessage, successMessage) {
+  if (confirmMessage && !confirm(confirmMessage)) return false;
+  pushUndoSnapshot("thay dữ liệu");
+  places = nextPlaces;
+  selectedId = null;
+  savePlaces();
+  render();
+  showUndoStatus(successMessage);
+  return true;
+}
+
+function pushUndoSnapshot(label) {
+  undoStack.push({
+    label,
+    places: JSON.parse(JSON.stringify(places)),
+    selectedId,
+    at: Date.now(),
+  });
+  undoStack = undoStack.slice(-12);
+}
+
+function undoLastChange() {
+  const snapshot = undoStack.pop();
+  if (!snapshot) {
+    showStatus("Không có thao tác để hoàn tác.", true);
+    return;
+  }
+  places = snapshot.places.map(normalizePlace).filter(isValidPlace);
+  selectedId = snapshot.selectedId;
+  savePlaces();
+  closeEditor();
+  render();
+  if (selectedId && getPlace(selectedId)) selectPlace(selectedId, true);
+  showStatus(`Đã hoàn tác ${snapshot.label}.`);
+}
+
+function showUndoStatus(message) {
+  showStatus(message, false, {
+    label: "Hoàn tác",
+    onClick: undoLastChange,
+  });
+}
+
+function markBackupExported() {
+  const meta = getBackupMeta();
+  meta.lastExportAt = new Date().toISOString();
+  meta.dismissedAt = "";
+  localStorage.setItem(BACKUP_META_KEY, JSON.stringify(meta));
+  renderDataPanel();
+}
+
+function getBackupMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(BACKUP_META_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function dismissBackupReminder() {
+  const meta = getBackupMeta();
+  meta.dismissedAt = new Date().toISOString();
+  localStorage.setItem(BACKUP_META_KEY, JSON.stringify(meta));
+  renderDataPanel();
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
+}
+
+function base64ToUint8Array(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function renderDataPanel() {
+  if (!els.backupStatus) return;
+  const meta = getBackupMeta();
+  const lastExport = meta.lastExportAt ? new Date(meta.lastExportAt) : null;
+  els.backupStatus.textContent = lastExport
+    ? `Backup ${formatRelativeDays(lastExport)}`
+    : "Chưa backup";
+  els.backupReminder.classList.toggle("hidden", !shouldShowBackupReminder(meta));
+
+  const settings = getGistSettings();
+  if (document.activeElement !== els.gistToken) els.gistToken.value = settings.token || "";
+  if (document.activeElement !== els.gistId) els.gistId.value = settings.gistId || "";
+}
+
+function shouldShowBackupReminder(meta) {
+  if (places.length === 0) return false;
+  const now = Date.now();
+  const lastExport = meta.lastExportAt ? new Date(meta.lastExportAt).getTime() : 0;
+  const dismissed = meta.dismissedAt ? new Date(meta.dismissedAt).getTime() : 0;
+  const reminderMs = BACKUP_REMINDER_DAYS * 86400000;
+  if (dismissed && now - dismissed < reminderMs) return false;
+  return !lastExport || now - lastExport > reminderMs;
+}
+
+function formatRelativeDays(date) {
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (days <= 0) return "hôm nay";
+  return `${days} ngày trước`;
+}
+
+function getGistSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(GIST_SETTINGS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveGistSettings() {
+  const settings = {
+    token: els.gistToken.value.trim(),
+    gistId: els.gistId.value.trim(),
+  };
+  localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify(settings));
+  showStatus("Đã lưu cấu hình Gist.");
+}
+
+async function pushGistBackup() {
+  const settings = readGistSettingsFromInputs();
+  if (!settings.token) {
+    showStatus("Cần GitHub token có quyền gist.", true);
+    return;
+  }
+
+  try {
+    setGistButtonsDisabled(true);
+    const payload = createBackupPayload();
+    const body = {
+      description: "Taste Map backup",
+      public: false,
+      files: {
+        [GIST_FILENAME]: {
+          content: JSON.stringify(payload, null, 2),
+        },
+      },
+    };
+    const url = settings.gistId
+      ? `https://api.github.com/gists/${encodeURIComponent(settings.gistId)}`
+      : "https://api.github.com/gists";
+    const res = await fetch(url, {
+      method: settings.gistId ? "PATCH" : "POST",
+      headers: getGistHeaders(settings.token),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("Gist push failed");
+    const data = await res.json();
+    els.gistId.value = data.id;
+    localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify({ token: settings.token, gistId: data.id }));
+    markBackupExported();
+    showStatus("Đã đồng bộ lên GitHub Gist.");
+  } catch {
+    showStatus("Không đẩy được lên Gist.", true);
+  } finally {
+    setGistButtonsDisabled(false);
+  }
+}
+
+async function pullGistBackup() {
+  const settings = readGistSettingsFromInputs();
+  if (!settings.token || !settings.gistId) {
+    showStatus("Cần token và Gist ID để kéo dữ liệu.", true);
+    return;
+  }
+
+  try {
+    setGistButtonsDisabled(true);
+    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(settings.gistId)}`, {
+      headers: getGistHeaders(settings.token),
+    });
+    if (!res.ok) throw new Error("Gist pull failed");
+    const data = await res.json();
+    const file = data.files?.[GIST_FILENAME] || Object.values(data.files || {})[0];
+    if (!file?.content) throw new Error("No backup file");
+    const payload = JSON.parse(file.content);
     const imported = Array.isArray(payload) ? payload : payload.places;
     if (!Array.isArray(imported)) throw new Error("Invalid backup");
     const normalized = imported.map(normalizePlace).filter(isValidPlace);
     if (normalized.length === 0) throw new Error("No valid places");
-    if (!confirm(`Nhập ${normalized.length} quán và thay dữ liệu hiện tại?`)) return;
-    places = normalized;
-    selectedId = null;
-    savePlaces();
-    render();
-    showStatus("Đã nhập dữ liệu.");
+    replaceAllPlaces(normalized, `Kéo ${normalized.length} quán từ Gist và thay dữ liệu hiện tại?`, "Đã kéo dữ liệu từ Gist.");
   } catch {
-    showStatus("File nhập không hợp lệ.", true);
+    showStatus("Không kéo được dữ liệu từ Gist.", true);
+  } finally {
+    setGistButtonsDisabled(false);
   }
+}
+
+function readGistSettingsFromInputs() {
+  const settings = {
+    token: els.gistToken.value.trim(),
+    gistId: els.gistId.value.trim(),
+  };
+  localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify(settings));
+  return settings;
+}
+
+function getGistHeaders(token) {
+  return {
+    "Accept": "application/vnd.github+json",
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
+function setGistButtonsDisabled(disabled) {
+  els.saveGistSettingsBtn.disabled = disabled;
+  els.pushGistBtn.disabled = disabled;
+  els.pullGistBtn.disabled = disabled;
 }
 
 function getPlace(id) {
@@ -1770,15 +2105,27 @@ function makeId() {
   return `place-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function showStatus(message, isError = false) {
+function showStatus(message, isError = false, action = null) {
   clearTimeout(statusTimer);
-  els.mapStatus.textContent = message;
+  els.mapStatus.innerHTML = "";
+  const text = document.createElement("span");
+  text.textContent = message;
+  els.mapStatus.appendChild(text);
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "toast-action";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick, { once: true });
+    els.mapStatus.appendChild(button);
+  }
   els.mapStatus.classList.toggle("toast-error", isError);
   els.mapStatus.classList.remove("hidden");
   statusTimer = setTimeout(() => {
     els.mapStatus.classList.add("hidden");
     els.mapStatus.classList.remove("toast-error");
-  }, 2300);
+    els.mapStatus.innerHTML = "";
+  }, action ? 6000 : 2300);
 }
 
 function refreshIcons() {

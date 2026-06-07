@@ -108,6 +108,52 @@
           <div id="recommendationList" class="recommendation-list"></div>
         </section>
 
+        <section class="panel data-panel">
+          <div class="panel-heading">
+            <h2>Dữ liệu</h2>
+            <span id="backupStatus" class="meta-count">Chưa backup</span>
+          </div>
+          <div id="backupReminder" class="backup-reminder hidden">
+            <i data-lucide="archive"></i>
+            <span>Nên xuất backup định kỳ.</span>
+            <button id="dismissBackupReminderBtn" class="text-button" type="button">Nhắc sau</button>
+          </div>
+          <div class="data-actions">
+            <button id="encryptedExportBtn" class="ghost-button" type="button">
+              <i data-lucide="lock-keyhole"></i>
+              <span>Backup mã hóa</span>
+            </button>
+            <button id="plainExportBtn" class="ghost-button" type="button">
+              <i data-lucide="file-json"></i>
+              <span>JSON thường</span>
+            </button>
+          </div>
+          <div class="gist-sync">
+            <div class="field">
+              <label for="gistToken">GitHub token</label>
+              <input id="gistToken" type="password" autocomplete="off" placeholder="token có quyền gist" />
+            </div>
+            <div class="field">
+              <label for="gistId">Gist ID</label>
+              <input id="gistId" type="text" autocomplete="off" placeholder="để trống để tạo gist mới" />
+            </div>
+            <div class="data-actions">
+              <button id="saveGistSettingsBtn" class="ghost-button" type="button">
+                <i data-lucide="save"></i>
+                <span>Lưu cấu hình</span>
+              </button>
+              <button id="pushGistBtn" class="ghost-button" type="button">
+                <i data-lucide="cloud-upload"></i>
+                <span>Đẩy lên</span>
+              </button>
+              <button id="pullGistBtn" class="ghost-button" type="button">
+                <i data-lucide="cloud-download"></i>
+                <span>Kéo về</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
         <section class="panel list-panel">
           <div class="panel-heading">
             <h2>Quán đã lưu</h2>

@@ -267,7 +267,7 @@ svg {
 .sidebar {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border-right: 1px solid var(--line);
@@ -469,6 +469,49 @@ svg {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+.data-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.backup-reminder {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  color: var(--ink);
+  background: #fff7e6;
+  border: 1px solid #f0d28a;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.backup-reminder span {
+  min-width: 0;
+}
+
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.data-actions .ghost-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.gist-sync {
+  display: grid;
+  gap: 8px;
+}
+
+.gist-sync .field {
+  margin-bottom: 0;
 }
 
 .place-list {
@@ -835,12 +878,25 @@ svg {
   transform: translateX(-50%);
   z-index: 10;
   max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 9px 12px;
   color: #fff;
   background: rgba(17, 25, 22, 0.9);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   font-size: 13px;
+}
+
+.toast-action {
+  min-height: 28px;
+  padding: 0 9px;
+  color: #111916;
+  background: #fff;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .editor-panel {
