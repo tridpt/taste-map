@@ -279,7 +279,7 @@ svg {
 .sidebar {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: repeat(4, auto) minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border-right: 1px solid var(--line);
@@ -769,29 +769,36 @@ svg {
   box-shadow: var(--shadow);
 }
 
+.maps-import-panel {
+  display: grid;
+  gap: 10px;
+}
+
 .maps-import {
-  height: 42px;
-  display: flex;
-  align-items: center;
+  min-height: 86px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: start;
   gap: 8px;
-  margin-top: 8px;
-  padding: 0 10px;
+  padding: 9px;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid transparent;
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
 
 .maps-import:focus-within {
   border-color: var(--teal);
-  background: #fff;
+}
+
+.maps-import > i {
+  margin-top: 8px;
 }
 
 .maps-import textarea {
   width: 100%;
   min-width: 0;
-  height: 32px;
+  height: 68px;
   border: 0;
   outline: 0;
   resize: none;
@@ -799,13 +806,12 @@ svg {
   background: transparent;
 }
 
+.maps-import .icon-button {
+  margin-top: 3px;
+}
+
 .import-queue {
-  margin-top: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  padding-top: 2px;
 }
 
 .import-queue-head {
@@ -828,7 +834,7 @@ svg {
 .import-queue-list {
   display: grid;
   gap: 7px;
-  max-height: 240px;
+  max-height: 220px;
   overflow: auto;
 }
 
@@ -839,6 +845,7 @@ svg {
   align-items: center;
   padding: 8px;
   background: var(--surface-soft);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
 }
 
