@@ -4,6 +4,7 @@ test("app render", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Quán quen" })).toBeVisible();
   await expect(page.locator("#map")).toBeVisible();
+  await expect(page.locator(".list-panel")).toBeInViewport();
   await expect(page.locator(".place-item")).toHaveCount(5);
   await expect(page.locator(".place-div-marker")).toHaveCount(5);
 });

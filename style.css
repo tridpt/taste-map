@@ -283,10 +283,15 @@ svg {
 .sidebar {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: minmax(190px, 0.9fr) auto minmax(240px, 1.1fr);
   gap: 12px;
   padding: 14px;
   border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.sidebar > .panel:first-child {
+  min-height: 0;
   overflow: auto;
 }
 
