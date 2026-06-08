@@ -14,6 +14,7 @@ test("app render", async ({ page }) => {
   await expect(page.locator(".place-detail-panel")).toContainText("Google Maps");
   await expect(page.locator(".place-detail-panel")).toContainText("Chỉ đường");
   await expect(page.locator(".place-detail-panel")).toContainText("Apple Maps");
+  await expect(page.locator(".place-detail-panel")).toContainText("Chia sẻ");
   await expect(page.locator(".place-detail-panel")).toContainText("Đã ghé");
   await page.locator(".place-detail-panel [data-detail-action='filter-tag'][data-tag='wifi mạnh']").click();
   await expect(page.locator("#tagFilters [data-tag='wifi mạnh']")).toHaveAttribute("aria-pressed", "true");
@@ -136,4 +137,13 @@ test("stats panel summarizes visits after marking visited", async ({ page }) => 
   await expect(page.locator("#statsSummary")).toContainText("lần ghé");
   await expect(page.locator(".stats-grid .stat-tile")).toHaveCount(2);
   await expect(page.locator(".stat-month-chart .stat-month")).toHaveCount(6);
+});
+
+test("share payload includes place name and maps link", async ({ page }) => {
+  await page.goto("/");
+  const payload = await page.evaluate(() => buildSharePayload(places[0]));
+  expect(payload.title).toBeTruthy();
+  expect(payload.text).toContain(payload.title);
+  expect(payload.text).toContain(payload.url);
+  expect(payload.url).toContain("google.com/maps");
 });

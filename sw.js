@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_VERSION = "taste-map-v8";
+const CACHE_VERSION = "taste-map-v9";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const TILE_CACHE = `${CACHE_VERSION}:tiles`;

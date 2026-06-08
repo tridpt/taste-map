@@ -1072,6 +1072,10 @@ function renderPlaceDetail() {
             <i data-lucide="apple"></i>
             <span>Apple Maps</span>
           </button>
+          <button class="ghost-button" type="button" data-detail-action="share" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="share-2"></i>
+            <span>Chia sẻ</span>
+          </button>
           <button class="ghost-button" type="button" data-detail-action="visit" data-id="${escapeAttr(place.id)}">
             <i data-lucide="calendar-check"></i>
             <span>Đã ghé</span>
@@ -1115,6 +1119,9 @@ function handlePlaceDetailAction(event) {
     case "directions-apple":
       openAppleMaps(place);
       break;
+    case "share":
+      sharePlace(place);
+      break;
     case "visit":
       markPlaceVisited(place.id);
       break;
@@ -1157,9 +1164,7 @@ function getDirectionsUrl(place) {
 
 function openAppleMaps(place) {
   window.open(getAppleMapsUrl(place), "_blank", "noopener");
-}
-
-function getAppleMapsUrl(place) {
+}function getAppleMapsUrl(place) {
   const url = new URL("https://maps.apple.com/");
   url.searchParams.set("daddr", `${place.lat},${place.lng}`);
   if (userLocation) {
@@ -1168,6 +1173,40 @@ function getAppleMapsUrl(place) {
   url.searchParams.set("dirflg", "d");
   if (place.name) url.searchParams.set("q", place.name);
   return url.toString();
+}
+
+function sharePlace(place) {
+  const payload = buildSharePayload(place);
+  if (navigator.share) {
+    navigator.share(payload).catch(() => {});
+    return;
+  }
+  copyShareText(payload.text);
+}
+
+function buildSharePayload(place) {
+  const url = getGoogleMapsUrl(place);
+  const lines = [place.name];
+  if (place.address) lines.push(place.address);
+  lines.push(url);
+  return {
+    title: place.name,
+    text: lines.join("\n"),
+    url,
+  };
+}
+
+async function copyShareText(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      showStatus("Đã copy thông tin quán để chia sẻ.");
+      return;
+    }
+  } catch {
+    // fall through to manual copy hint
+  }
+  showStatus("Chưa copy được, hãy copy link Google Maps thủ công.", true);
 }
 
 function applyStoredTheme() {
