@@ -135,8 +135,8 @@ test("stats panel summarizes visits after marking visited", async ({ page }) => 
   await page.locator(".place-detail-panel [data-detail-action='visit']").click();
 
   await expect(page.locator("#statsSummary")).toContainText("lần ghé");
-  await expect(page.locator(".stats-grid .stat-tile")).toHaveCount(2);
-  await expect(page.locator(".stat-month-chart .stat-month")).toHaveCount(6);
+  await expect(page.locator(".stats-grid .stat-tile")).toHaveCount(4);
+  await expect(page.locator(".stat-month-chart").first().locator(".stat-month")).toHaveCount(6);
 });
 
 test("share payload includes place name and maps link", async ({ page }) => {
@@ -229,4 +229,53 @@ test("itinerary collects stops and builds a directions url", async ({ page }) =>
   await expect(page.locator(".itinerary-stop")).toHaveCount(2);
   expect(result.url).toContain("google.com/maps/dir");
   expect(result.url).toContain("destination=");
+});
+
+test("stats show estimated spending after visits", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".place-item").first().click();
+  await page.locator(".place-detail-panel [data-detail-action='visit']").click();
+  await expect(page.locator(".stats-content")).toContainText("Chi tiêu ước tính");
+  await expect(page.locator(".stats-content")).toContainText("Lâu chưa ghé");
+});
+
+test("csv import adds places", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const before = places.length;
+    const csv = "name,type,address,lat,lng,price,tags,notes\nQuán CSV,cafe,Quận 1,10.78,106.70,3,wifi; yên,ghi chú\n";
+    const r = importCsvText(csv);
+    return { before, after: places.length, added: r.added };
+  });
+  expect(result.added).toBe(1);
+  expect(result.after).toBe(result.before + 1);
+  await expect(page.locator(".place-item").filter({ hasText: "Quán CSV" })).toHaveCount(1);
+});
+
+test("collections filter places by membership", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const collection = createCollection("Đi date");
+    toggleCollectionMembership(collection.id, places[0].id);
+    activeCollection = collection.id;
+    render();
+    return { count: getFilteredPlaces().length, name: collection.name };
+  });
+  expect(res.count).toBe(1);
+  await expect(page.locator("#collectionFilterList")).toContainText("Đi date");
+  await expect(page.locator(".place-item")).toHaveCount(1);
+});
+
+test("heatmap toggle switches map layers", async ({ page }) => {
+  await page.goto("/");
+  await page.click("#heatmapBtn");
+  await expect(page.locator("#heatmapBtn")).toHaveAttribute("aria-pressed", "true");
+  const state = await page.evaluate(() => ({
+    mode: heatmapMode,
+    heatOn: Boolean(heatLayer) && map.hasLayer(heatLayer),
+    markersOff: !map.hasLayer(markerLayer),
+  }));
+  expect(state.mode).toBe(true);
+  expect(state.heatOn).toBe(true);
+  expect(state.markersOff).toBe(true);
 });

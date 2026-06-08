@@ -217,6 +217,10 @@
               <i data-lucide="dices"></i>
               <span>Random gần tôi</span>
             </button>
+            <button id="heatmapBtn" class="ghost-button dark" type="button" aria-pressed="false" title="Bản đồ nhiệt mật độ quán">
+              <i data-lucide="flame"></i>
+              <span>Heatmap</span>
+            </button>
           </div>
           <div id="map"></div>
           <div id="mapStatus" class="map-status hidden" role="status"></div>
@@ -259,6 +263,14 @@
               <span id="itineraryMeta" class="meta-count">0 quán</span>
             </div>
             <div id="itineraryContent" class="itinerary-content"></div>
+          </section>
+
+          <section class="panel collections-panel">
+            <div class="panel-heading">
+              <h2>Bộ sưu tập</h2>
+              <button id="newCollectionBtn" class="text-button" type="button">＋ Mới</button>
+            </div>
+            <div id="collectionFilterList" class="collection-list"></div>
           </section>
 
           <section class="panel stats-panel">
@@ -306,6 +318,15 @@
                 <i data-lucide="file-json"></i>
                 <span>JSON thường</span>
               </button>
+              <button id="csvImportTrigger" class="ghost-button" type="button">
+                <i data-lucide="file-up"></i>
+                <span>Nhập CSV</span>
+              </button>
+              <button id="csvExportBtn" class="ghost-button" type="button">
+                <i data-lucide="file-down"></i>
+                <span>Xuất CSV</span>
+              </button>
+              <input id="csvImportFile" type="file" accept=".csv,text/csv" hidden />
             </div>
             <div class="gist-sync">
               <div class="field">
@@ -478,6 +499,7 @@
     crossorigin=""
   ></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="app.js"></script>
 </body>

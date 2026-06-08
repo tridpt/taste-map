@@ -4,11 +4,14 @@ const STORAGE_KEY = "quan-quen-map:places:v1";
 const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
 const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
+const COLLECTIONS_KEY = "quan-quen-map:collections:v1";
 const THEME_KEY = "quan-quen-map:theme:v1";
 const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
 const BACKUP_REMINDER_DAYS = 7;
 const RECENT_RECOMMENDATION_DAYS = 14;
 const RANDOM_NEARBY_RADIUS = 3000;
+const PRICE_ESTIMATE_VND = { 1: 40000, 2: 80000, 3: 150000, 4: 300000 };
+const STALE_VISIT_DAYS = 45;
 const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -56,6 +59,10 @@ let priceRange = { min: 1, max: 4 };
 let maxDistanceKm = 0;
 let itinerary = [];
 let routeLine = null;
+let collections = [];
+let activeCollection = "";
+let heatLayer = null;
+let heatmapMode = false;
 let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
@@ -149,6 +156,7 @@ function init() {
   hydrateStaticControls();
   syncRangeLabels();
   places = loadPlaces();
+  collections = loadCollections();
   initMap();
   bindEvents();
   render();
@@ -189,6 +197,8 @@ function cacheElements() {
     "areaFilters",
     "itineraryMeta",
     "itineraryContent",
+    "newCollectionBtn",
+    "collectionFilterList",
     "suggestMood",
     "rerollRecommendationsBtn",
     "recommendationList",
@@ -201,6 +211,9 @@ function cacheElements() {
     "dismissBackupReminderBtn",
     "encryptedExportBtn",
     "plainExportBtn",
+    "csvImportTrigger",
+    "csvImportFile",
+    "csvExportBtn",
     "gistToken",
     "gistId",
     "saveGistSettingsBtn",
@@ -225,6 +238,7 @@ function cacheElements() {
     "statsContent",
     "pinModeBtn",
     "randomNearbyBtn",
+    "heatmapBtn",
     "mapStatus",
     "editorPanel",
     "placeForm",
@@ -385,9 +399,14 @@ function bindEvents() {
     render();
   });
   els.itineraryContent.addEventListener("click", handleItineraryAction);
+  els.newCollectionBtn.addEventListener("click", promptNewCollection);
+  els.collectionFilterList.addEventListener("click", handleCollectionFilterClick);
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
   els.encryptedExportBtn.addEventListener("click", exportEncryptedBackup);
   els.plainExportBtn.addEventListener("click", exportPlainBackup);
+  els.csvImportTrigger.addEventListener("click", () => els.csvImportFile.click());
+  els.csvImportFile.addEventListener("change", handleCsvImport);
+  els.csvExportBtn.addEventListener("click", exportCsv);
   els.importTrigger.addEventListener("click", () => els.importFile.click());
   els.importFile.addEventListener("change", importPlaces);
   els.installAppBtn.addEventListener("click", installApp);
@@ -418,6 +437,7 @@ function bindEvents() {
   els.importQueueList.addEventListener("click", handleImportQueueClick);
   els.pinModeBtn.addEventListener("click", () => setPinMode(!pinMode));
   els.randomNearbyBtn.addEventListener("click", pickRandomNearby);
+  els.heatmapBtn.addEventListener("click", toggleHeatmap);
 
   els.typeFilters.addEventListener("click", (event) => {
     const button = event.target.closest("[data-type]");
@@ -486,6 +506,10 @@ function bindEvents() {
   });
 
   els.placeDetailContent.addEventListener("click", handlePlaceDetailAction);
+  els.statsContent.addEventListener("click", (event) => {
+    const stale = event.target.closest("[data-stale-id]");
+    if (stale) selectPlace(stale.dataset.staleId, true);
+  });
 
   els.geoResults.addEventListener("click", (event) => {
     const result = event.target.closest("[data-lat]");
@@ -688,8 +712,10 @@ function render() {
   renderRecommendations();
   renderList(filtered);
   renderMarkers(filtered);
+  renderHeat(filtered);
   renderRoute();
   renderItinerary();
+  renderCollections();
   renderPlaceDetail();
   renderStats();
   refreshIcons();
@@ -910,6 +936,42 @@ function renderMarkers(filtered) {
     }
     marker.bindPopup(createPopup(place));
   });
+
+  if (heatmapMode && map.hasLayer(markerLayer)) {
+    map.removeLayer(markerLayer);
+  } else if (!heatmapMode && !map.hasLayer(markerLayer)) {
+    markerLayer.addTo(map);
+  }
+}
+
+function renderHeat(filtered) {
+  if (!map) return;
+  if (!heatmapMode || typeof L.heatLayer !== "function") {
+    if (heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+    return;
+  }
+  const points = filtered.map((place) => [
+    place.lat,
+    place.lng,
+    Math.max(0.25, getFitScore(place) / 100),
+  ]);
+  if (!heatLayer) {
+    heatLayer = L.heatLayer(points, { radius: 32, blur: 22, maxZoom: 17 });
+  } else {
+    heatLayer.setLatLngs(points);
+  }
+  if (!map.hasLayer(heatLayer)) heatLayer.addTo(map);
+}
+
+function toggleHeatmap() {
+  if (typeof L.heatLayer !== "function") {
+    showStatus("Không tải được lớp heatmap.", true);
+    return;
+  }
+  heatmapMode = !heatmapMode;
+  els.heatmapBtn.setAttribute("aria-pressed", String(heatmapMode));
+  render();
+  showStatus(heatmapMode ? "Đang xem mật độ heatmap." : "Đã tắt heatmap.");
 }
 
 function getFilteredPlaces() {
@@ -922,6 +984,10 @@ function getFilteredPlaces() {
       if (distance == null || distance > maxDistanceKm * 1000) return false;
     }
     if (activeAreas.size > 0 && !activeAreas.has(getPlaceArea(place))) return false;
+    if (activeCollection) {
+      const collection = collections.find((item) => item.id === activeCollection);
+      if (collection && !collection.placeIds.includes(place.id)) return false;
+    }
     if (openNowOnly && getOpenStatusForFilter(place).state !== "open") return false;
     if (activePurposes.size > 0) {
       const matchesPurpose = [...activePurposes].every((key) => (place.ratings[key] || 0) >= 3);
@@ -1208,6 +1274,18 @@ function renderPlaceDetail() {
           </button>
         </div>
         ${place.notes ? `<p class="place-detail-note">${escapeHtml(place.notes)}</p>` : ""}
+        ${collections.length ? `
+          <div class="place-collections">
+            <span class="place-collections-label">Bộ sưu tập</span>
+            <div class="place-collections-chips">
+              ${collections.map((collection) => `
+                <button class="chip-button" type="button" data-detail-action="toggle-collection" data-collection-id="${escapeAttr(collection.id)}" data-id="${escapeAttr(place.id)}" aria-pressed="${collection.placeIds.includes(place.id) ? "true" : "false"}">
+                  <span>${escapeHtml(collection.name)}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        ` : ""}
         <div class="place-detail-visits">
           <strong>${lastVisit ? `Ghé gần nhất: ${escapeHtml(formatDate(lastVisit))}` : "Chưa lưu lần ghé"}</strong>
           ${recentVisits.length ? recentVisits.map((visit) => `
@@ -1225,6 +1303,11 @@ function handlePlaceDetailAction(event) {
 
   if (button.dataset.detailAction === "filter-tag") {
     filterByDetailTag(button.dataset.tag);
+    return;
+  }
+
+  if (button.dataset.detailAction === "toggle-collection") {
+    toggleCollectionMembership(button.dataset.collectionId, button.dataset.id);
     return;
   }
 
@@ -1946,6 +2029,108 @@ function getItineraryDirectionsUrl(stops) {
   return url.toString();
 }
 
+function loadCollections() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COLLECTIONS_KEY));
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((item) => item && item.id && item.name)
+      .map((item) => ({
+        id: String(item.id),
+        name: String(item.name).trim().slice(0, 60),
+        placeIds: Array.isArray(item.placeIds) ? item.placeIds.map(String) : [],
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function saveCollections() {
+  localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(collections));
+}
+
+function createCollection(name) {
+  const clean = String(name || "").trim().slice(0, 60);
+  if (!clean) return null;
+  const collection = { id: makeId(), name: clean, placeIds: [] };
+  collections.push(collection);
+  saveCollections();
+  render();
+  return collection;
+}
+
+function promptNewCollection() {
+  const name = window.prompt("Tên bộ sưu tập mới:");
+  if (name === null) return;
+  const collection = createCollection(name);
+  if (collection) showStatus(`Đã tạo bộ sưu tập "${collection.name}".`);
+  else showStatus("Tên bộ sưu tập không hợp lệ.", true);
+}
+
+function deleteCollection(id) {
+  collections = collections.filter((item) => item.id !== id);
+  if (activeCollection === id) activeCollection = "";
+  saveCollections();
+  render();
+  showStatus("Đã xóa bộ sưu tập.");
+}
+
+function toggleCollectionMembership(collectionId, placeId) {
+  const collection = collections.find((item) => item.id === collectionId);
+  if (!collection || !getPlace(placeId)) return;
+  const index = collection.placeIds.indexOf(placeId);
+  if (index >= 0) collection.placeIds.splice(index, 1);
+  else collection.placeIds.push(placeId);
+  saveCollections();
+  render();
+}
+
+function handleCollectionFilterClick(event) {
+  const remove = event.target.closest("[data-collection-remove]");
+  if (remove) {
+    event.stopPropagation();
+    deleteCollection(remove.dataset.collectionRemove);
+    return;
+  }
+  const chip = event.target.closest("[data-collection-filter]");
+  if (!chip) return;
+  const id = chip.dataset.collectionFilter;
+  activeCollection = activeCollection === id ? "" : id;
+  render();
+}
+
+function renderCollections() {
+  if (!els.collectionFilterList) return;
+
+  if (collections.length === 0) {
+    els.collectionFilterList.innerHTML = `
+      <p class="stats-note">Tạo bộ sưu tập để gom quán theo nhóm (đi date, làm việc...).</p>
+    `;
+    return;
+  }
+
+  const allChip = `
+    <button class="chip-button${activeCollection === "" ? "" : ""}" type="button" data-collection-filter="" aria-pressed="${activeCollection === "" ? "true" : "false"}">
+      <span>Tất cả</span>
+      <span>${places.length}</span>
+    </button>
+  `;
+
+  const chips = collections.map((collection) => `
+    <span class="collection-chip-wrap">
+      <button class="chip-button" type="button" data-collection-filter="${escapeAttr(collection.id)}" aria-pressed="${activeCollection === collection.id ? "true" : "false"}">
+        <span>${escapeHtml(collection.name)}</span>
+        <span>${collection.placeIds.length}</span>
+      </button>
+      <button class="collection-remove" type="button" data-collection-remove="${escapeAttr(collection.id)}" title="Xóa bộ sưu tập" aria-label="Xóa bộ sưu tập">
+        <i data-lucide="x"></i>
+      </button>
+    </span>
+  `).join("");
+
+  els.collectionFilterList.innerHTML = allChip + chips;
+}
+
 async function searchGeo() {
   const query = els.geoSearch.value.trim();
   if (!query) return;
@@ -2579,6 +2764,171 @@ function todayStamp() {
   return new Date().toISOString().slice(0, 10);
 }
 
+async function handleCsvImport() {
+  const file = els.csvImportFile.files?.[0];
+  els.csvImportFile.value = "";
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const result = importCsvText(text);
+    if (result.added === 0) {
+      showStatus(result.message || "Không có dòng hợp lệ trong CSV.", true);
+      return;
+    }
+    showUndoStatus(`Đã nhập ${result.added} quán từ CSV${result.skipped ? `, bỏ qua ${result.skipped}` : ""}.`);
+  } catch {
+    showStatus("Không đọc được file CSV.", true);
+  }
+}
+
+function importCsvText(text) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) {
+    return { added: 0, skipped: 0, message: "CSV cần dòng tiêu đề và ít nhất 1 dòng dữ liệu." };
+  }
+
+  const header = rows[0].map((cell) => normalizeText(cell));
+  const col = (keys) => header.findIndex((cell) => keys.some((key) => cell.includes(key)));
+  const idx = {
+    name: col(["name", "ten", "quan"]),
+    type: col(["type", "loai"]),
+    address: col(["address", "dia chi", "khu"]),
+    lat: col(["lat", "vi do"]),
+    lng: col(["lng", "lon", "kinh do"]),
+    price: col(["price", "gia"]),
+    tags: col(["tag"]),
+    notes: col(["note", "ghi chu"]),
+    favorite: col(["favorite", "ruot", "yeu thich"]),
+  };
+
+  const drafts = [];
+  let skipped = 0;
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    const get = (key) => (idx[key] >= 0 ? String(row[idx[key]] ?? "").trim() : "");
+    const name = get("name");
+    const lat = Number(get("lat"));
+    const lng = Number(get("lng"));
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      skipped += 1;
+      continue;
+    }
+    const favRaw = normalizeText(get("favorite"));
+    const now = Date.now();
+    drafts.push(normalizePlace({
+      id: makeId(),
+      name,
+      type: resolveCsvType(get("type")),
+      address: get("address"),
+      lat,
+      lng,
+      priceLevel: clamp(Number(get("price")) || 2, 1, 4),
+      tags: get("tags").split(/[;|]/).map((tag) => tag.trim()).filter(Boolean),
+      notes: get("notes"),
+      favorite: ["1", "true", "yes", "co", "x"].includes(favRaw),
+      createdAt: now,
+      updatedAt: now,
+    }));
+  }
+
+  if (drafts.length === 0) {
+    return { added: 0, skipped, message: "Không có dòng nào có tên và tọa độ hợp lệ." };
+  }
+
+  pushUndoSnapshot("nhập CSV");
+  places = [...drafts, ...places];
+  savePlaces();
+  render();
+  return { added: drafts.length, skipped };
+}
+
+function resolveCsvType(raw) {
+  const norm = normalizeText(raw);
+  const byKey = TYPES.find((type) => type.key === norm);
+  if (byKey) return byKey.key;
+  const byLabel = TYPES.find((type) => normalizeText(type.label) === norm);
+  return byLabel ? byLabel.key : "cafe";
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  const str = String(text).replace(/\r\n?/g, "\n");
+  for (let i = 0; i < str.length; i += 1) {
+    const ch = str[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (str[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += ch;
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((cells) => cells.some((cell) => String(cell).trim() !== ""));
+}
+
+function exportCsv() {
+  if (places.length === 0) {
+    showStatus("Chưa có quán để xuất.", true);
+    return;
+  }
+  const header = ["name", "type", "address", "lat", "lng", "price", "tags", "notes", "favorite"];
+  const lines = [header.join(",")];
+  places.forEach((place) => {
+    lines.push([
+      place.name,
+      getType(place.type).label,
+      place.address,
+      place.lat,
+      place.lng,
+      place.priceLevel,
+      place.tags.join("; "),
+      place.notes,
+      place.favorite ? "1" : "0",
+    ].map(csvCell).join(","));
+  });
+  downloadText(lines.join("\n"), `taste-map-${todayStamp()}.csv`, "text/csv");
+  showStatus(`Đã xuất ${places.length} quán ra CSV.`);
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function downloadText(text, filename, type) {
+  const blob = new Blob([text], { type: `${type};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function replaceAllPlaces(nextPlaces, confirmMessage, successMessage) {
   if (confirmMessage && !confirm(confirmMessage)) return false;
   pushUndoSnapshot("thay dữ liệu");
@@ -2678,6 +3028,7 @@ function renderStats() {
 
   els.statsSummary.textContent = `${stats.totalVisits} lần ghé`;
 
+  const monthlyAvgSpend = stats.totalSpending / 6;
   const topPlaceLabel = stats.topPlace
     ? `${escapeHtml(stats.topPlace.name)} · ${stats.topPlace.visits.length} lần`
     : "-";
@@ -2702,13 +3053,35 @@ function renderStats() {
   const maxMonth = Math.max(1, ...stats.months.map((month) => month.count));
   const monthBars = stats.months
     .map((month) => `
-      <div class="stat-month" title="${escapeAttr(month.title)}: ${month.count} lần">
+      <div class="stat-month" title="${escapeAttr(month.title)}: ${month.count} lần · ${formatVnd(month.spend)}">
         <div class="stat-month-bar">
           <i style="--height:${Math.round((month.count / maxMonth) * 100)}%"></i>
         </div>
         <span class="stat-month-count">${month.count}</span>
         <span class="stat-month-label">${escapeHtml(month.label)}</span>
       </div>
+    `)
+    .join("");
+
+  const maxSpend = Math.max(1, ...stats.months.map((month) => month.spend));
+  const spendBars = stats.months
+    .map((month) => `
+      <div class="stat-month" title="${escapeAttr(month.title)}: ${formatVnd(month.spend)}">
+        <div class="stat-month-bar">
+          <i class="spend-bar" style="--height:${Math.round((month.spend / maxSpend) * 100)}%"></i>
+        </div>
+        <span class="stat-month-count">${month.spend ? formatVndShort(month.spend) : "0"}</span>
+        <span class="stat-month-label">${escapeHtml(month.label)}</span>
+      </div>
+    `)
+    .join("");
+
+  const staleRows = stats.stalePlaces
+    .map(({ place, lastVisit }) => `
+      <button class="stale-place" type="button" data-stale-id="${escapeAttr(place.id)}">
+        <span class="stale-name">${escapeHtml(place.name)}</span>
+        <span class="stale-days">${daysSince(lastVisit)} ngày</span>
+      </button>
     `)
     .join("");
 
@@ -2722,6 +3095,14 @@ function renderStats() {
         <span>Quán ghé nhiều nhất</span>
         <strong class="stat-top-place">${topPlaceLabel}</strong>
       </div>
+      <div class="stat-tile">
+        <span>Chi tiêu ước tính (6 tháng)</span>
+        <strong>${formatVnd(stats.totalSpending)}</strong>
+      </div>
+      <div class="stat-tile">
+        <span>Trung bình / tháng</span>
+        <strong>${formatVnd(Math.round(monthlyAvgSpend))}</strong>
+      </div>
     </div>
     <div class="stats-section">
       <h3>Điểm trung bình theo loại</h3>
@@ -2733,20 +3114,36 @@ function renderStats() {
       <h3>Lần ghé 6 tháng gần đây</h3>
       <div class="stat-month-chart">${monthBars}</div>
     </div>
+    <div class="stats-section">
+      <h3>Chi tiêu ước tính 6 tháng</h3>
+      <div class="stat-month-chart">${spendBars}</div>
+    </div>
+    <div class="stats-section">
+      <h3>Lâu chưa ghé</h3>
+      ${staleRows
+        ? `<div class="stale-list">${staleRows}</div>`
+        : '<p class="stats-note">Không có quán nào quá lâu chưa ghé.</p>'}
+    </div>
   `;
 }
 
 function computeStats() {
   const allVisits = [];
   let topPlace = null;
+  let totalSpending = 0;
   const byType = new Map();
+  const spendByKey = new Map();
 
   places.forEach((place) => {
     if (!topPlace || place.visits.length > topPlace.visits.length) {
       if (place.visits.length > 0) topPlace = place;
     }
+    const estimate = PRICE_ESTIMATE_VND[place.priceLevel] || 0;
     place.visits.forEach((visit) => {
       allVisits.push(visit);
+      totalSpending += estimate;
+      const monthKey = String(visit.date || "").slice(0, 7);
+      spendByKey.set(monthKey, (spendByKey.get(monthKey) || 0) + estimate);
       const agg = byType.get(place.type) || { sum: 0, count: 0 };
       agg.sum += visit.rating || 0;
       agg.count += 1;
@@ -2766,6 +3163,7 @@ function computeStats() {
       label: `T${date.getMonth() + 1}`,
       title: `Tháng ${date.getMonth() + 1}/${date.getFullYear()}`,
       count: 0,
+      spend: spendByKey.get(key) || 0,
     });
   }
 
@@ -2774,7 +3172,13 @@ function computeStats() {
     if (monthIndex.has(key)) months[monthIndex.get(key)].count += 1;
   });
 
-  return { totalVisits: allVisits.length, topPlace, byType, months };
+  const stalePlaces = places
+    .map((place) => ({ place, lastVisit: place.visits[0]?.date || place.lastVisit || "" }))
+    .filter((item) => item.lastVisit && daysSince(item.lastVisit) >= STALE_VISIT_DAYS)
+    .sort((a, b) => daysSince(b.lastVisit) - daysSince(a.lastVisit))
+    .slice(0, 3);
+
+  return { totalVisits: allVisits.length, topPlace, byType, months, totalSpending, stalePlaces };
 }
 
 function renderDataPanel() {
@@ -2970,6 +3374,18 @@ function getType(key) {
 
 function formatPrice(level) {
   return "₫".repeat(clamp(Number(level), 1, 4));
+}
+
+function formatVnd(amount) {
+  const value = Math.round(Number(amount) || 0);
+  return `${value.toLocaleString("vi-VN")}₫`;
+}
+
+function formatVndShort(amount) {
+  const value = Math.round(Number(amount) || 0);
+  if (value >= 1000000) return `${(value / 1000000).toFixed(value % 1000000 ? 1 : 0)}tr`;
+  if (value >= 1000) return `${Math.round(value / 1000)}k`;
+  return String(value);
 }
 
 function splitTags(value) {
