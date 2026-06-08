@@ -229,6 +229,16 @@ input::placeholder {
   background: rgba(23, 107, 104, 0.08);
 }
 
+.text-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.text-button:disabled:hover {
+  background: transparent;
+}
+
 .icon-button {
   width: 38px;
   height: 38px;

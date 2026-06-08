@@ -5,6 +5,7 @@ const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
 const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
 const BACKUP_REMINDER_DAYS = 7;
+const RECENT_RECOMMENDATION_DAYS = 14;
 const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -52,6 +53,7 @@ let deferredInstallPrompt = null;
 let waitingServiceWorker = null;
 let pinMode = false;
 let statusTimer = null;
+let recommendationRerollCount = 0;
 
 const seedPlaces = [
   {
@@ -162,6 +164,7 @@ function cacheElements() {
     "tagFilters",
     "sortMode",
     "suggestMood",
+    "rerollRecommendationsBtn",
     "recommendationList",
     "backupStatus",
     "backupReminder",
@@ -301,7 +304,11 @@ function bindEvents() {
   els.sidebarToggleBtn.addEventListener("click", toggleSidebar);
   els.globalSearch.addEventListener("input", render);
   els.sortMode.addEventListener("change", render);
-  els.suggestMood.addEventListener("change", renderRecommendations);
+  els.suggestMood.addEventListener("change", () => {
+    recommendationRerollCount = 0;
+    renderRecommendations();
+  });
+  els.rerollRecommendationsBtn.addEventListener("click", rerollRecommendations);
   els.newPlaceBtn.addEventListener("click", () => openEditor());
   els.closeEditorBtn.addEventListener("click", closeEditor);
   els.resetFiltersBtn.addEventListener("click", resetFilters);
@@ -639,16 +646,15 @@ function renderRecommendations() {
   const candidates = places
     .filter((place) => activeTypes.has(place.type))
     .filter((place) => [...activeTags].every((tag) => place.tags.includes(tag)));
+  els.rerollRecommendationsBtn.disabled = candidates.length <= 1 || (mood === "nearby" && !userLocation);
 
   if (mood === "nearby" && !userLocation) {
     els.recommendationList.innerHTML = '<p class="recommendation-empty">Bấm nút vị trí để gợi ý quán gần bạn.</p>';
     return;
   }
 
-  const recommended = candidates
-    .map((place) => ({ place, score: getMoodScore(place, mood) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+  const scored = candidates.map((place) => ({ place, score: getMoodScore(place, mood) }));
+  const recommended = getRecommendedPlaces(scored);
 
   if (recommended.length === 0) {
     els.recommendationList.innerHTML = '<p class="recommendation-empty">Chưa có quán phù hợp.</p>';
@@ -670,6 +676,61 @@ function renderRecommendations() {
       </button>
     `;
   }).join("");
+}
+
+function rerollRecommendations() {
+  recommendationRerollCount += 1;
+  renderRecommendations();
+  showStatus("Đã random lại gợi ý.");
+}
+
+function getRecommendedPlaces(scored) {
+  const ranked = scored
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const pool = ranked.length ? ranked : scored.slice().sort((a, b) => b.score - a.score);
+  const limit = Math.min(3, pool.length);
+
+  if (recommendationRerollCount === 0) {
+    return pool.slice(0, limit);
+  }
+
+  const fresh = pool.filter(({ place }) => !wasVisitedRecently(place));
+  const weightedPool = fresh.length >= limit ? fresh : pool;
+  const picked = pickWeightedRecommendations(weightedPool, limit);
+  if (picked.length >= limit) return picked;
+
+  const pickedIds = new Set(picked.map(({ place }) => place.id));
+  const fallback = pool.filter(({ place }) => !pickedIds.has(place.id));
+  return [...picked, ...fallback].slice(0, limit);
+}
+
+function pickWeightedRecommendations(items, limit) {
+  const remaining = [...items];
+  const picked = [];
+
+  while (remaining.length > 0 && picked.length < limit) {
+    const totalWeight = remaining.reduce((sum, item) => sum + getRecommendationWeight(item), 0);
+    let ticket = Math.random() * totalWeight;
+    const index = remaining.findIndex((item) => {
+      ticket -= getRecommendationWeight(item);
+      return ticket <= 0;
+    });
+    const [selected] = remaining.splice(index >= 0 ? index : remaining.length - 1, 1);
+    picked.push(selected);
+  }
+
+  return picked;
+}
+
+function getRecommendationWeight({ place, score }) {
+  const recencyPenalty = wasVisitedRecently(place) ? 0.22 : 1;
+  return Math.max(1, score) ** 1.25 * recencyPenalty;
+}
+
+function wasVisitedRecently(place) {
+  const latest = place.visits[0]?.date || place.lastVisit || "";
+  return latest ? daysSince(latest) <= RECENT_RECOMMENDATION_DAYS : false;
 }
 
 function renderList(filtered) {

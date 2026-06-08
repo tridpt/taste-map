@@ -7,6 +7,9 @@ test("app render", async ({ page }) => {
   await expect(page.locator(".list-panel")).toBeInViewport();
   await expect(page.locator(".place-item")).toHaveCount(5);
   await expect(page.locator(".place-div-marker")).toHaveCount(5);
+  await expect(page.locator(".recommendation-item")).toHaveCount(3);
+  await page.click("#rerollRecommendationsBtn");
+  await expect(page.locator(".recommendation-item")).toHaveCount(3);
   await page.locator(".place-item").first().click();
   await expect(page.locator(".place-detail-panel")).toContainText("Google Maps");
   await expect(page.locator(".place-detail-panel")).toContainText("Chỉ đường");
