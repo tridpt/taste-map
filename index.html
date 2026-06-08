@@ -42,6 +42,9 @@
         <button id="locateBtn" class="icon-button" type="button" title="Vị trí của tôi" aria-label="Vị trí của tôi">
           <i data-lucide="navigation"></i>
         </button>
+        <button id="themeToggleBtn" class="icon-button" type="button" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối" aria-pressed="false">
+          <i data-lucide="moon"></i>
+        </button>
         <button id="exportBtn" class="ghost-button" type="button">
           <i data-lucide="download"></i>
           <span>Xuất</span>
@@ -98,6 +101,14 @@
               <option value="price">Giá thấp trước</option>
               <option value="name">Tên A-Z</option>
             </select>
+          </div>
+
+          <div class="field compact">
+            <label>Trạng thái</label>
+            <button id="openNowFilter" class="chip-button open-now-toggle" type="button" aria-pressed="false">
+              <i data-lucide="clock"></i>
+              <span>Đang mở cửa</span>
+            </button>
           </div>
         </section>
 
@@ -191,6 +202,14 @@
               </select>
             </div>
             <div id="recommendationList" class="recommendation-list"></div>
+          </section>
+
+          <section class="panel stats-panel">
+            <div class="panel-heading">
+              <h2>Thống kê</h2>
+              <span id="statsSummary" class="meta-count">Chưa có lần ghé</span>
+            </div>
+            <div id="statsContent" class="stats-content"></div>
           </section>
 
           <section class="panel data-panel">

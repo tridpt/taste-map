@@ -13,6 +13,7 @@ test("app render", async ({ page }) => {
   await page.locator(".place-item").first().click();
   await expect(page.locator(".place-detail-panel")).toContainText("Google Maps");
   await expect(page.locator(".place-detail-panel")).toContainText("Chỉ đường");
+  await expect(page.locator(".place-detail-panel")).toContainText("Apple Maps");
   await expect(page.locator(".place-detail-panel")).toContainText("Đã ghé");
   await page.locator(".place-detail-panel [data-detail-action='filter-tag'][data-tag='wifi mạnh']").click();
   await expect(page.locator("#tagFilters [data-tag='wifi mạnh']")).toHaveAttribute("aria-pressed", "true");
@@ -83,4 +84,56 @@ test("PWA manifest is valid", async ({ page, request }) => {
   expect(manifest.display).toBe("standalone");
   expect(manifest.icons.length).toBeGreaterThanOrEqual(2);
   expect(manifest.share_target.action).toContain("share-target");
+});
+
+test("theme toggle switches to dark mode and persists", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  await page.click("#themeToggleBtn");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("#themeToggleBtn")).toHaveAttribute("aria-pressed", "true");
+
+  const stored = await page.evaluate(() => localStorage.getItem("quan-quen-map:theme:v1"));
+  expect(stored).toBe("dark");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  await page.click("#themeToggleBtn");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+});
+
+test("open-now filter shows only places open right now", async ({ page }) => {
+  await page.goto("/");
+  await page.click("#newPlaceBtn");
+  await page.fill("#placeName", "Mở cả ngày");
+  await page.fill("#placeAddress", "Test area");
+  await page.fill("#openingOpen", "00:00");
+  await page.fill("#openingClose", "23:59");
+  await page.click('#placeForm button[type="submit"]');
+  await expect(page.locator(".place-item")).toHaveCount(6);
+
+  await page.click("#openNowFilter");
+  await expect(page.locator("#openNowFilter")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".place-item")).toHaveCount(1);
+  await expect(page.locator(".place-item").first()).toContainText("Mở cả ngày");
+
+  await page.click("#openNowFilter");
+  await expect(page.locator("#openNowFilter")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(".place-item")).toHaveCount(6);
+});
+
+test("stats panel summarizes visits after marking visited", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#statsSummary")).toHaveText("Chưa có lần ghé");
+  await expect(page.locator(".stats-empty")).toBeVisible();
+
+  await page.locator(".place-item").first().click();
+  await page.locator(".place-detail-panel [data-detail-action='visit']").click();
+
+  await expect(page.locator("#statsSummary")).toContainText("lần ghé");
+  await expect(page.locator(".stats-grid .stat-tile")).toHaveCount(2);
+  await expect(page.locator(".stat-month-chart .stat-month")).toHaveCount(6);
 });

@@ -4,6 +4,8 @@ const STORAGE_KEY = "quan-quen-map:places:v1";
 const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
 const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
+const THEME_KEY = "quan-quen-map:theme:v1";
+const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
 const BACKUP_REMINDER_DAYS = 7;
 const RECENT_RECOMMENDATION_DAYS = 14;
 const GIST_FILENAME = "taste-map-backup.json";
@@ -44,6 +46,7 @@ let selectedId = null;
 let activeTypes = new Set(TYPES.map((type) => type.key));
 let activePurposes = new Set();
 let activeTags = new Set();
+let openNowOnly = false;
 let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
@@ -132,6 +135,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   cacheElements();
+  applyStoredTheme();
   setSidebarCollapsed(loadSidebarCollapsed(), { persist: false, refresh: false });
   hydrateStaticControls();
   places = loadPlaces();
@@ -152,6 +156,7 @@ function cacheElements() {
     "placeCount",
     "globalSearch",
     "locateBtn",
+    "themeToggleBtn",
     "exportBtn",
     "importTrigger",
     "importFile",
@@ -163,6 +168,7 @@ function cacheElements() {
     "purposeFilters",
     "tagFilters",
     "sortMode",
+    "openNowFilter",
     "suggestMood",
     "rerollRecommendationsBtn",
     "recommendationList",
@@ -195,6 +201,8 @@ function cacheElements() {
     "importQueueList",
     "placeDetailMeta",
     "placeDetailContent",
+    "statsSummary",
+    "statsContent",
     "pinModeBtn",
     "mapStatus",
     "editorPanel",
@@ -315,6 +323,12 @@ function bindEvents() {
   els.placeForm.addEventListener("submit", savePlace);
   els.deletePlaceBtn.addEventListener("click", deleteCurrentPlace);
   els.locateBtn.addEventListener("click", locateUser);
+  els.themeToggleBtn.addEventListener("click", toggleTheme);
+  els.openNowFilter.addEventListener("click", () => {
+    openNowOnly = !openNowOnly;
+    syncFilterButtons();
+    render();
+  });
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
   els.encryptedExportBtn.addEventListener("click", exportEncryptedBackup);
   els.plainExportBtn.addEventListener("click", exportPlainBackup);
@@ -617,6 +631,7 @@ function render() {
   renderList(filtered);
   renderMarkers(filtered);
   renderPlaceDetail();
+  renderStats();
   refreshIcons();
 }
 
@@ -818,6 +833,7 @@ function getFilteredPlaces() {
   const term = normalizeText(els.globalSearch.value);
   const filtered = places.filter((place) => {
     if (!activeTypes.has(place.type)) return false;
+    if (openNowOnly && getOpeningStatus(place).state !== "open") return false;
     if (activePurposes.size > 0) {
       const matchesPurpose = [...activePurposes].every((key) => (place.ratings[key] || 0) >= 3);
       if (!matchesPurpose) return false;
@@ -1052,6 +1068,10 @@ function renderPlaceDetail() {
             <i data-lucide="route"></i>
             <span>Chỉ đường</span>
           </button>
+          <button class="ghost-button" type="button" data-detail-action="directions-apple" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="apple"></i>
+            <span>Apple Maps</span>
+          </button>
           <button class="ghost-button" type="button" data-detail-action="visit" data-id="${escapeAttr(place.id)}">
             <i data-lucide="calendar-check"></i>
             <span>Đã ghé</span>
@@ -1092,6 +1112,9 @@ function handlePlaceDetailAction(event) {
     case "directions":
       openExternalMap(place, true);
       break;
+    case "directions-apple":
+      openAppleMaps(place);
+      break;
     case "visit":
       markPlaceVisited(place.id);
       break;
@@ -1130,6 +1153,59 @@ function getDirectionsUrl(place) {
   }
   url.searchParams.set("destination", `${place.lat},${place.lng}`);
   return url.toString();
+}
+
+function openAppleMaps(place) {
+  window.open(getAppleMapsUrl(place), "_blank", "noopener");
+}
+
+function getAppleMapsUrl(place) {
+  const url = new URL("https://maps.apple.com/");
+  url.searchParams.set("daddr", `${place.lat},${place.lng}`);
+  if (userLocation) {
+    url.searchParams.set("saddr", `${userLocation.lat},${userLocation.lng}`);
+  }
+  url.searchParams.set("dirflg", "d");
+  if (place.name) url.searchParams.set("q", place.name);
+  return url.toString();
+}
+
+function applyStoredTheme() {
+  applyTheme(loadTheme());
+}
+
+function loadTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  const prefersDark = window.matchMedia
+    && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return prefersDark ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  const next = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) themeColor.setAttribute("content", THEME_COLORS[next]);
+
+  if (els.themeToggleBtn) {
+    const isDark = next === "dark";
+    els.themeToggleBtn.setAttribute("aria-pressed", String(isDark));
+    const label = isDark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối";
+    els.themeToggleBtn.setAttribute("title", label);
+    els.themeToggleBtn.setAttribute("aria-label", label);
+    const icon = els.themeToggleBtn.querySelector("i");
+    if (icon) icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
+    refreshIcons();
+  }
+}
+
+function toggleTheme() {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+  showStatus(next === "dark" ? "Đã bật giao diện tối." : "Đã bật giao diện sáng.");
 }
 
 function openEditor(place = null) {
@@ -1443,6 +1519,7 @@ function resetFilters() {
   activeTypes = new Set(TYPES.map((type) => type.key));
   activePurposes = new Set();
   activeTags = new Set();
+  openNowOnly = false;
   els.globalSearch.value = "";
   els.sortMode.value = "fit";
   syncFilterButtons();
@@ -1459,6 +1536,7 @@ function syncFilterButtons() {
   els.tagFilters.querySelectorAll("[data-tag]").forEach((button) => {
     button.setAttribute("aria-pressed", String(activeTags.has(button.dataset.tag)));
   });
+  els.openNowFilter.setAttribute("aria-pressed", String(openNowOnly));
 }
 
 function setPinMode(value) {
@@ -2181,6 +2259,122 @@ function base64ToUint8Array(value) {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+function renderStats() {
+  if (!els.statsContent) return;
+  const stats = computeStats();
+
+  if (stats.totalVisits === 0) {
+    els.statsSummary.textContent = "Chưa có lần ghé";
+    els.statsContent.innerHTML = `
+      <div class="stats-empty">
+        <i data-lucide="bar-chart-3"></i>
+        <span>Đánh dấu "Đã ghé" để xem thống kê thói quen của bạn.</span>
+      </div>
+    `;
+    return;
+  }
+
+  els.statsSummary.textContent = `${stats.totalVisits} lần ghé`;
+
+  const topPlaceLabel = stats.topPlace
+    ? `${escapeHtml(stats.topPlace.name)} · ${stats.topPlace.visits.length} lần`
+    : "-";
+
+  const typeRows = TYPES
+    .map((type) => ({ type, agg: stats.byType.get(type.key) }))
+    .filter((row) => row.agg && row.agg.count > 0)
+    .map(({ type, agg }) => {
+      const avg = agg.sum / agg.count;
+      return `
+        <div class="stat-type-row">
+          <span class="type-badge" style="background:${escapeAttr(type.color)}">
+            <i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(type.label)}
+          </span>
+          <div class="stat-type-bar"><i style="--value:${(avg / 5) * 100}%"></i></div>
+          <strong>${avg.toFixed(1)}</strong>
+        </div>
+      `;
+    })
+    .join("");
+
+  const maxMonth = Math.max(1, ...stats.months.map((month) => month.count));
+  const monthBars = stats.months
+    .map((month) => `
+      <div class="stat-month" title="${escapeAttr(month.title)}: ${month.count} lần">
+        <div class="stat-month-bar">
+          <i style="--height:${Math.round((month.count / maxMonth) * 100)}%"></i>
+        </div>
+        <span class="stat-month-count">${month.count}</span>
+        <span class="stat-month-label">${escapeHtml(month.label)}</span>
+      </div>
+    `)
+    .join("");
+
+  els.statsContent.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-tile">
+        <span>Tổng lần ghé</span>
+        <strong>${stats.totalVisits}</strong>
+      </div>
+      <div class="stat-tile">
+        <span>Quán ghé nhiều nhất</span>
+        <strong class="stat-top-place">${topPlaceLabel}</strong>
+      </div>
+    </div>
+    <div class="stats-section">
+      <h3>Điểm trung bình theo loại</h3>
+      ${typeRows
+        ? `<div class="stat-type-list">${typeRows}</div>`
+        : '<p class="stats-note">Chưa có điểm từ lịch sử ghé.</p>'}
+    </div>
+    <div class="stats-section">
+      <h3>Lần ghé 6 tháng gần đây</h3>
+      <div class="stat-month-chart">${monthBars}</div>
+    </div>
+  `;
+}
+
+function computeStats() {
+  const allVisits = [];
+  let topPlace = null;
+  const byType = new Map();
+
+  places.forEach((place) => {
+    if (!topPlace || place.visits.length > topPlace.visits.length) {
+      if (place.visits.length > 0) topPlace = place;
+    }
+    place.visits.forEach((visit) => {
+      allVisits.push(visit);
+      const agg = byType.get(place.type) || { sum: 0, count: 0 };
+      agg.sum += visit.rating || 0;
+      agg.count += 1;
+      byType.set(place.type, agg);
+    });
+  });
+
+  const now = new Date();
+  const months = [];
+  const monthIndex = new Map();
+  for (let i = 5; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthIndex.set(key, months.length);
+    months.push({
+      key,
+      label: `T${date.getMonth() + 1}`,
+      title: `Tháng ${date.getMonth() + 1}/${date.getFullYear()}`,
+      count: 0,
+    });
+  }
+
+  allVisits.forEach((visit) => {
+    const key = String(visit.date || "").slice(0, 7);
+    if (monthIndex.has(key)) months[monthIndex.get(key)].count += 1;
+  });
+
+  return { totalVisits: allVisits.length, topPlace, byType, months };
 }
 
 function renderDataPanel() {
