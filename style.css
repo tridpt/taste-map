@@ -2173,3 +2173,59 @@ body.pin-mode #map {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+.favorite-reminder {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-line);
+  border-radius: var(--radius);
+}
+
+.favorite-reminder-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.favorite-reminder-head svg {
+  width: 16px;
+  height: 16px;
+}
+
+.favorite-reminder-list {
+  display: grid;
+  gap: 6px;
+}
+
+.favorite-reminder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  text-align: left;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.favorite-reminder-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-reminder-days {
+  flex: 0 0 auto;
+  color: var(--tomato);
+  font-weight: 700;
+  font-size: 12px;
+}

@@ -12,6 +12,7 @@ const RECENT_RECOMMENDATION_DAYS = 14;
 const RANDOM_NEARBY_RADIUS = 3000;
 const PRICE_ESTIMATE_VND = { 1: 40000, 2: 80000, 3: 150000, 4: 300000 };
 const STALE_VISIT_DAYS = 45;
+const STALE_FAVORITE_DAYS = 30;
 const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -202,6 +203,7 @@ function cacheElements() {
     "suggestMood",
     "rerollRecommendationsBtn",
     "recommendationList",
+    "favoriteReminder",
     "backupStatus",
     "backupReminder",
     "dataPlaceCount",
@@ -505,6 +507,12 @@ function bindEvents() {
     selectPlace(item.dataset.placeId, true);
   });
 
+  els.favoriteReminder.addEventListener("click", (event) => {
+    const item = event.target.closest("[data-place-id]");
+    if (!item) return;
+    selectPlace(item.dataset.placeId, true);
+  });
+
   els.placeDetailContent.addEventListener("click", handlePlaceDetailAction);
   els.statsContent.addEventListener("click", (event) => {
     const stale = event.target.closest("[data-stale-id]");
@@ -710,6 +718,7 @@ function render() {
   renderTagFilters();
   renderAreaFilters();
   renderRecommendations();
+  renderFavoriteReminder();
   renderList(filtered);
   renderMarkers(filtered);
   renderHeat(filtered);
@@ -807,6 +816,48 @@ function rerollRecommendations() {
   showStatus("Đã random lại gợi ý.");
 }
 
+function getFavoriteReminders() {
+  return places
+    .filter((place) => place.favorite)
+    .map((place) => ({ place, lastVisit: place.visits[0]?.date || place.lastVisit || "" }))
+    .filter((item) => !item.lastVisit || daysSince(item.lastVisit) >= STALE_FAVORITE_DAYS)
+    .sort((a, b) => {
+      const da = a.lastVisit ? daysSince(a.lastVisit) : Number.POSITIVE_INFINITY;
+      const db = b.lastVisit ? daysSince(b.lastVisit) : Number.POSITIVE_INFINITY;
+      return db - da;
+    })
+    .slice(0, 3);
+}
+
+function renderFavoriteReminder() {
+  if (!els.favoriteReminder) return;
+  const reminders = getFavoriteReminders();
+
+  if (reminders.length === 0) {
+    els.favoriteReminder.classList.add("hidden");
+    els.favoriteReminder.innerHTML = "";
+    return;
+  }
+
+  const items = reminders.map(({ place, lastVisit }) => {
+    const note = lastVisit ? `${daysSince(lastVisit)} ngày` : "chưa ghé lần nào";
+    return `
+      <button class="favorite-reminder-item" type="button" data-place-id="${escapeAttr(place.id)}">
+        <span class="favorite-reminder-name">${escapeHtml(place.name)}</span>
+        <span class="favorite-reminder-days">${escapeHtml(note)}</span>
+      </button>
+    `;
+  }).join("");
+
+  els.favoriteReminder.classList.remove("hidden");
+  els.favoriteReminder.innerHTML = `
+    <div class="favorite-reminder-head">
+      <i data-lucide="bell"></i>
+      <span>Lâu rồi chưa ghé quán ruột</span>
+    </div>
+    <div class="favorite-reminder-list">${items}</div>
+  `;
+}
 function getRecommendedPlaces(scored) {
   const ranked = scored
     .filter((item) => item.score > 0)
@@ -1053,6 +1104,11 @@ function getMoodScore(place, mood) {
       break;
     case "nearby":
       score = userLocation ? Math.max(0, 100 - getDistanceFromUser(place) / 80) + getFitScore(place) * 0.25 : 0;
+      break;
+    case "new":
+      score = place.visits.length === 0
+        ? 60 + getFitScore(place) * 0.4
+        : Math.max(0, 20 - place.visits.length * 5);
       break;
     case "work":
     default:

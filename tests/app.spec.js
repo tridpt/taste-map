@@ -279,3 +279,27 @@ test("heatmap toggle switches map layers", async ({ page }) => {
   expect(state.heatOn).toBe(true);
   expect(state.markersOff).toBe(true);
 });
+
+test("new mood favors unvisited places", async ({ page }) => {
+  await page.goto("/");
+  const scores = await page.evaluate(() => {
+    const ratings = { taste: 3, quiet: 3, power: 3, date: 3, work: 3 };
+    const fresh = { visits: [], favorite: false, ratings, lastVisit: "", priceLevel: 2, type: "cafe" };
+    const visited = { visits: [{ date: "2026-01-01", rating: 5 }], favorite: false, ratings, lastVisit: "2026-01-01", priceLevel: 2, type: "cafe" };
+    return { fresh: getMoodScore(fresh, "new"), visited: getMoodScore(visited, "new") };
+  });
+  expect(scores.fresh).toBeGreaterThan(scores.visited);
+});
+
+test("favorite reminder lists stale favorites", async ({ page }) => {
+  await page.goto("/");
+  const found = await page.evaluate(() => {
+    const old = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    places.push(normalizePlace({ id: "fav-test", name: "Ruột cũ", lat: 10.78, lng: 106.70, favorite: true, lastVisit: old }));
+    render();
+    return getFavoriteReminders().some((item) => item.place.id === "fav-test");
+  });
+  expect(found).toBe(true);
+  await expect(page.locator("#favoriteReminder")).toBeVisible();
+  await expect(page.locator(".favorite-reminder-item").filter({ hasText: "Ruột cũ" })).toHaveCount(1);
+});
