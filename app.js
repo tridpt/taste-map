@@ -4,6 +4,7 @@ const STORAGE_KEY = "quan-quen-map:places:v1";
 const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
 const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
+const TYPES_KEY = "quan-quen-map:types:v1";
 const COLLECTIONS_KEY = "quan-quen-map:collections:v1";
 const ITINERARIES_KEY = "quan-quen-map:itineraries:v1";
 const THEME_KEY = "quan-quen-map:theme:v1";
@@ -23,12 +24,16 @@ const STALE_FAVORITE_DAYS = 30;
 const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
-const TYPES = [
+const DEFAULT_TYPES = [
   { key: "cafe", label: "Cafe", color: "#176b68", icon: "coffee" },
   { key: "food", label: "Ăn", color: "#bf4d35", icon: "utensils" },
   { key: "sweet", label: "Ngọt", color: "#8b477f", icon: "cake-slice" },
   { key: "drink", label: "Trà / bar", color: "#6550a7", icon: "glass-water" },
 ];
+
+const TYPE_COLORS = ["#176b68", "#bf4d35", "#8b477f", "#6550a7", "#2f7d4f", "#b98524", "#3a6ea5", "#a6457f"];
+
+let TYPES = DEFAULT_TYPES.map((type) => ({ ...type }));
 
 const PURPOSES = [
   { key: "taste", label: "Ngon", short: "Ngon", icon: "chef-hat" },
@@ -71,6 +76,7 @@ let collections = [];
 let activeCollection = "";
 let savedItineraries = [];
 let tagManagerOpen = false;
+let typeManagerOpen = false;
 let lastFocusedBeforeEditor = null;
 let heatLayer = null;
 let heatmapMode = false;
@@ -163,6 +169,7 @@ document.addEventListener("DOMContentLoaded", init);
 function init() {
   cacheElements();
   applyStoredTheme();
+  loadTypes();
   setSidebarCollapsed(loadSidebarCollapsed(), { persist: false, refresh: false });
   hydrateStaticControls();
   syncRangeLabels();
@@ -195,6 +202,11 @@ function cacheElements() {
     "newPlaceBtn",
     "resetFiltersBtn",
     "typeFilters",
+    "manageTypesBtn",
+    "typeManager",
+    "newTypeName",
+    "addTypeBtn",
+    "typeManagerList",
     "purposeFilters",
     "tagFilters",
     "manageTagsBtn",
@@ -424,6 +436,27 @@ function bindEvents() {
     renderTagManager();
   });
   els.tagManager.addEventListener("click", handleTagManagerAction);
+  els.manageTypesBtn.addEventListener("click", () => {
+    typeManagerOpen = !typeManagerOpen;
+    els.typeManager.classList.toggle("hidden", !typeManagerOpen);
+    els.manageTypesBtn.setAttribute("aria-pressed", String(typeManagerOpen));
+    renderTypeManager();
+  });
+  els.addTypeBtn.addEventListener("click", () => {
+    const type = createCustomType(els.newTypeName.value);
+    if (type) {
+      els.newTypeName.value = "";
+      showStatus(`Đã thêm loại "${type.label}".`);
+    } else {
+      showStatus("Tên loại không hợp lệ.", true);
+    }
+  });
+  els.typeManagerList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-type]");
+    if (!button) return;
+    if (!window.confirm("Xóa loại này? Quán thuộc loại sẽ chuyển về Cafe.")) return;
+    deleteCustomType(button.dataset.deleteType);
+  });
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
   els.encryptedExportBtn.addEventListener("click", exportEncryptedBackup);
   els.plainExportBtn.addEventListener("click", exportPlainBackup);
@@ -3703,6 +3736,108 @@ function getPlace(id) {
 
 function getType(key) {
   return TYPES.find((type) => type.key === key) || TYPES[0];
+}
+
+function loadTypes() {
+  let custom = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(TYPES_KEY));
+    if (Array.isArray(raw)) {
+      custom = raw
+        .filter((type) => type && type.key && type.label)
+        .map((type) => ({
+          key: String(type.key),
+          label: String(type.label).trim().slice(0, 40),
+          color: /^#[0-9a-fA-F]{6}$/.test(type.color) ? type.color : "#176b68",
+          icon: String(type.icon || "map-pin"),
+          custom: true,
+        }));
+    }
+  } catch {
+    custom = [];
+  }
+  const defaultKeys = new Set(DEFAULT_TYPES.map((type) => type.key));
+  custom = custom.filter((type) => !defaultKeys.has(type.key));
+  TYPES = [...DEFAULT_TYPES.map((type) => ({ ...type })), ...custom];
+  activeTypes = new Set(TYPES.map((type) => type.key));
+  return TYPES;
+}
+
+function saveCustomTypes() {
+  localStorage.setItem(TYPES_KEY, JSON.stringify(TYPES.filter((type) => type.custom)));
+}
+
+function createCustomType(label) {
+  const clean = String(label || "").trim().slice(0, 40);
+  if (!clean) return null;
+  const base = normalizeText(clean).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "loai";
+  let key = `c-${base}`;
+  let suffix = 1;
+  while (TYPES.some((type) => type.key === key)) {
+    key = `c-${base}-${suffix}`;
+    suffix += 1;
+  }
+  const type = {
+    key,
+    label: clean,
+    color: TYPE_COLORS[TYPES.length % TYPE_COLORS.length],
+    icon: "map-pin",
+    custom: true,
+  };
+  TYPES.push(type);
+  activeTypes.add(key);
+  saveCustomTypes();
+  hydrateStaticControls();
+  syncFilterButtons();
+  renderTypeManager();
+  render();
+  return type;
+}
+
+function deleteCustomType(key) {
+  const type = TYPES.find((item) => item.key === key);
+  if (!type || !type.custom) return;
+  let affected = 0;
+  places.forEach((place) => {
+    if (place.type === key) {
+      place.type = "cafe";
+      place.updatedAt = Date.now();
+      affected += 1;
+    }
+  });
+  TYPES = TYPES.filter((item) => item.key !== key);
+  activeTypes.delete(key);
+  if (activeTypes.size === 0) activeTypes = new Set(TYPES.map((item) => item.key));
+  saveCustomTypes();
+  if (affected) savePlaces();
+  hydrateStaticControls();
+  syncFilterButtons();
+  renderTypeManager();
+  render();
+  showStatus(affected ? `Đã xóa loại, chuyển ${affected} quán về Cafe.` : "Đã xóa loại.");
+}
+
+function renderTypeManager() {
+  if (!els.typeManagerList || !typeManagerOpen) return;
+  const custom = TYPES.filter((type) => type.custom);
+  if (custom.length === 0) {
+    els.typeManagerList.innerHTML = '<p class="stats-note">Chưa có loại tùy chỉnh nào.</p>';
+    return;
+  }
+  els.typeManagerList.innerHTML = custom.map((type) => `
+    <div class="tag-manager-row">
+      <span class="tag-manager-name">
+        <span class="type-swatch" style="background:${escapeAttr(type.color)}"></span>
+        ${escapeHtml(type.label)}
+      </span>
+      <div class="tag-manager-actions">
+        <button class="icon-button" type="button" data-delete-type="${escapeAttr(type.key)}" title="Xóa loại" aria-label="Xóa loại">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </div>
+    </div>
+  `).join("");
+  refreshIcons();
 }
 
 function formatPrice(level) {

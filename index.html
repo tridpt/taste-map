@@ -88,8 +88,18 @@
           </div>
 
           <div class="field">
-            <label>Loại quán</label>
+            <div class="field-head">
+              <label>Loại quán</label>
+              <button id="manageTypesBtn" class="text-button" type="button">Quản lý</button>
+            </div>
             <div id="typeFilters" class="segmented" role="group" aria-label="Loại quán"></div>
+            <div id="typeManager" class="tag-manager hidden">
+              <div class="type-add-row">
+                <input id="newTypeName" type="text" maxlength="40" placeholder="Tên loại mới" />
+                <button id="addTypeBtn" class="ghost-button" type="button">Thêm</button>
+              </div>
+              <div id="typeManagerList"></div>
+            </div>
           </div>
 
           <div class="field">

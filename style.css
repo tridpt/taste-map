@@ -2392,3 +2392,31 @@ body.pin-mode #map {
   color: #fff;
   background: rgba(17, 25, 22, 0.82);
 }
+
+.type-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.type-add-row input {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.type-add-row .ghost-button {
+  min-height: 34px;
+}
+
+.type-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: middle;
+}

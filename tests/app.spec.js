@@ -376,3 +376,29 @@ test("photos keep album category", async ({ page }) => {
   });
   expect(res).toEqual(["menu", "other", "other"]);
 });
+
+test("custom place type can be added and persisted", async ({ page }) => {
+  await page.goto("/");
+  await page.click("#manageTypesBtn");
+  await page.fill("#newTypeName", "Quán nhậu");
+  await page.click("#addTypeBtn");
+
+  await expect(page.locator("#typeFilters [data-type]")).toHaveCount(5);
+  await expect(page.locator("#placeType option")).toHaveCount(5);
+  await expect(page.locator("#typeManagerList")).toContainText("Quán nhậu");
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("quan-quen-map:types:v1")).length);
+  expect(persisted).toBe(1);
+});
+
+test("deleting custom type reassigns places to cafe", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const type = createCustomType("Bar test");
+    places[0].type = type.key;
+    deleteCustomType(type.key);
+    return { exists: TYPES.some((item) => item.key === type.key), placeType: places[0].type };
+  });
+  expect(res.exists).toBe(false);
+  expect(res.placeType).toBe("cafe");
+});
