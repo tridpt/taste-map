@@ -102,6 +102,11 @@
             <div id="tagFilters" class="chip-group tag-filter-list" role="group" aria-label="Tag quen"></div>
           </div>
 
+          <div class="field">
+            <label>Khu vực</label>
+            <div id="areaFilters" class="chip-group tag-filter-list" role="group" aria-label="Khu vực"></div>
+          </div>
+
           <div class="field compact">
             <label for="sortMode">Sắp xếp</label>
             <select id="sortMode">
@@ -114,11 +119,41 @@
           </div>
 
           <div class="field compact">
-            <label>Trạng thái</label>
+            <label>Khoảng giá <span id="priceRangeLabel" class="range-value">₫ – ₫₫₫₫</span></label>
+            <div class="range-row">
+              <span class="range-cap">Từ</span>
+              <input id="priceMin" type="range" min="1" max="4" step="1" value="1" aria-label="Giá tối thiểu" />
+            </div>
+            <div class="range-row">
+              <span class="range-cap">Đến</span>
+              <input id="priceMax" type="range" min="1" max="4" step="1" value="4" aria-label="Giá tối đa" />
+            </div>
+          </div>
+
+          <div class="field compact">
+            <label for="distanceFilter">Bán kính <span id="distanceLabel" class="range-value">Tắt</span></label>
+            <input id="distanceFilter" type="range" min="0" max="20" step="1" value="0" />
+          </div>
+
+          <div class="field compact">
+            <label>Trạng thái mở cửa</label>
             <button id="openNowFilter" class="chip-button open-now-toggle" type="button" aria-pressed="false">
               <i data-lucide="clock"></i>
               <span>Đang mở cửa</span>
             </button>
+            <div class="open-time-row">
+              <select id="openFilterDay" aria-label="Ngày trong tuần">
+                <option value="">Hôm nay</option>
+                <option value="1">Thứ 2</option>
+                <option value="2">Thứ 3</option>
+                <option value="3">Thứ 4</option>
+                <option value="4">Thứ 5</option>
+                <option value="5">Thứ 6</option>
+                <option value="6">Thứ 7</option>
+                <option value="0">Chủ nhật</option>
+              </select>
+              <input id="openFilterTime" type="time" aria-label="Giờ định đi" />
+            </div>
           </div>
         </section>
 
@@ -216,6 +251,14 @@
               </select>
             </div>
             <div id="recommendationList" class="recommendation-list"></div>
+          </section>
+
+          <section class="panel itinerary-panel">
+            <div class="panel-heading">
+              <h2>Lịch trình</h2>
+              <span id="itineraryMeta" class="meta-count">0 quán</span>
+            </div>
+            <div id="itineraryContent" class="itinerary-content"></div>
           </section>
 
           <section class="panel stats-panel">

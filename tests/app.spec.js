@@ -166,3 +166,67 @@ test("random nearby prompts to locate when position unknown", async ({ page }) =
   await page.click("#randomNearbyBtn");
   await expect(page.locator("#mapStatus")).toContainText("vị trí");
 });
+
+async function setRange(page, selector, value) {
+  await page.locator(selector).evaluate((el, v) => {
+    el.value = v;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, value);
+}
+
+test("price slider filters by price range", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".place-item")).toHaveCount(5);
+  await setRange(page, "#priceMin", "3");
+  await expect(page.locator("#priceRangeLabel")).toContainText("₫₫₫");
+  await expect(page.locator(".place-item")).toHaveCount(2);
+  await page.click("#resetFiltersBtn");
+  await expect(page.locator(".place-item")).toHaveCount(5);
+});
+
+test("open-at-time filter uses chosen weekday and time", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const place = { openingHours: { days: [1], open: "08:00", close: "17:00" } };
+    return {
+      openMon10: getOpeningStatusAt(place, 1, 600).state,
+      closedMon20: getOpeningStatusAt(place, 1, 1200).state,
+      closedTue10: getOpeningStatusAt(place, 2, 600).state,
+    };
+  });
+  expect(res.openMon10).toBe("open");
+  expect(res.closedMon20).toBe("closed");
+  expect(res.closedTue10).toBe("closed");
+});
+
+test("area filter narrows by district", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#areaFilters [data-area='Quận 3']").click();
+  await expect(page.locator("#areaFilters [data-area='Quận 3']")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".place-item")).toHaveCount(1);
+  await page.click("#resetFiltersBtn");
+  await expect(page.locator(".place-item")).toHaveCount(5);
+});
+
+test("itinerary collects stops and builds a directions url", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".itinerary-empty")).toBeVisible();
+
+  await page.locator(".place-item").nth(0).click();
+  await expect(page.locator(".place-detail-panel [data-detail-action='itinerary']")).toBeVisible();
+
+  const result = await page.evaluate(() => {
+    toggleItinerary(places[0].id);
+    toggleItinerary(places[1].id);
+    return {
+      count: itinerary.length,
+      url: getItineraryDirectionsUrl(itinerary.map((id) => getPlace(id))),
+    };
+  });
+
+  expect(result.count).toBe(2);
+  await expect(page.locator("#itineraryMeta")).toHaveText("2 quán");
+  await expect(page.locator(".itinerary-stop")).toHaveCount(2);
+  expect(result.url).toContain("google.com/maps/dir");
+  expect(result.url).toContain("destination=");
+});

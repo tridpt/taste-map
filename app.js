@@ -48,7 +48,14 @@ let selectedId = null;
 let activeTypes = new Set(TYPES.map((type) => type.key));
 let activePurposes = new Set();
 let activeTags = new Set();
+let activeAreas = new Set();
 let openNowOnly = false;
+let openFilterDay = "";
+let openFilterTime = "";
+let priceRange = { min: 1, max: 4 };
+let maxDistanceKm = 0;
+let itinerary = [];
+let routeLine = null;
 let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
@@ -140,6 +147,7 @@ function init() {
   applyStoredTheme();
   setSidebarCollapsed(loadSidebarCollapsed(), { persist: false, refresh: false });
   hydrateStaticControls();
+  syncRangeLabels();
   places = loadPlaces();
   initMap();
   bindEvents();
@@ -171,6 +179,16 @@ function cacheElements() {
     "tagFilters",
     "sortMode",
     "openNowFilter",
+    "openFilterDay",
+    "openFilterTime",
+    "priceMin",
+    "priceMax",
+    "priceRangeLabel",
+    "distanceFilter",
+    "distanceLabel",
+    "areaFilters",
+    "itineraryMeta",
+    "itineraryContent",
     "suggestMood",
     "rerollRecommendationsBtn",
     "recommendationList",
@@ -342,6 +360,31 @@ function bindEvents() {
     syncFilterButtons();
     render();
   });
+  els.openFilterDay.addEventListener("change", () => {
+    openFilterDay = els.openFilterDay.value;
+    if (openNowOnly) render();
+  });
+  els.openFilterTime.addEventListener("change", () => {
+    openFilterTime = els.openFilterTime.value;
+    if (openNowOnly) render();
+  });
+  els.priceMin.addEventListener("input", handlePriceRangeInput);
+  els.priceMax.addEventListener("input", handlePriceRangeInput);
+  els.distanceFilter.addEventListener("input", () => {
+    maxDistanceKm = Number(els.distanceFilter.value);
+    syncRangeLabels();
+    render();
+  });
+  els.areaFilters.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-area]");
+    if (!button) return;
+    const area = button.dataset.area;
+    if (activeAreas.has(area)) activeAreas.delete(area);
+    else activeAreas.add(area);
+    syncFilterButtons();
+    render();
+  });
+  els.itineraryContent.addEventListener("click", handleItineraryAction);
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
   els.encryptedExportBtn.addEventListener("click", exportEncryptedBackup);
   els.plainExportBtn.addEventListener("click", exportPlainBackup);
@@ -641,9 +684,12 @@ function render() {
   els.placeCount.textContent = `${places.length} ${places.length === 1 ? "quán" : "quán"} đã lưu`;
   els.filteredCount.textContent = String(filtered.length);
   renderTagFilters();
+  renderAreaFilters();
   renderRecommendations();
   renderList(filtered);
   renderMarkers(filtered);
+  renderRoute();
+  renderItinerary();
   renderPlaceDetail();
   renderStats();
   refreshIcons();
@@ -665,6 +711,28 @@ function renderTagFilters() {
   els.tagFilters.innerHTML = tags.map(([tag, count]) => `
     <button class="chip-button" type="button" data-tag="${escapeAttr(tag)}" aria-pressed="${activeTags.has(tag)}">
       <span>${escapeHtml(tag)}</span>
+      <span>${count}</span>
+    </button>
+  `).join("");
+}
+
+function renderAreaFilters() {
+  const counts = new Map();
+  places.forEach((place) => {
+    const area = getPlaceArea(place);
+    counts.set(area, (counts.get(area) || 0) + 1);
+  });
+
+  activeAreas.forEach((area) => {
+    if (!counts.has(area)) activeAreas.delete(area);
+  });
+
+  const areas = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "vi"));
+
+  els.areaFilters.innerHTML = areas.map(([area, count]) => `
+    <button class="chip-button" type="button" data-area="${escapeAttr(area)}" aria-pressed="${activeAreas.has(area)}">
+      <span>${escapeHtml(area)}</span>
       <span>${count}</span>
     </button>
   `).join("");
@@ -848,7 +916,13 @@ function getFilteredPlaces() {
   const term = normalizeText(els.globalSearch.value);
   const filtered = places.filter((place) => {
     if (!activeTypes.has(place.type)) return false;
-    if (openNowOnly && getOpeningStatus(place).state !== "open") return false;
+    if (place.priceLevel < priceRange.min || place.priceLevel > priceRange.max) return false;
+    if (maxDistanceKm > 0) {
+      const distance = getDistanceFromUser(place);
+      if (distance == null || distance > maxDistanceKm * 1000) return false;
+    }
+    if (activeAreas.size > 0 && !activeAreas.has(getPlaceArea(place))) return false;
+    if (openNowOnly && getOpenStatusForFilter(place).state !== "open") return false;
     if (activePurposes.size > 0) {
       const matchesPurpose = [...activePurposes].every((key) => (place.ratings[key] || 0) >= 3);
       if (!matchesPurpose) return false;
@@ -958,18 +1032,20 @@ function formatDistance(distance) {
 }
 
 function getOpeningStatus(place, now = new Date()) {
+  return getOpeningStatusAt(place, now.getDay(), now.getHours() * 60 + now.getMinutes());
+}
+
+function getOpeningStatusAt(place, day, minutes) {
   const hours = place.openingHours;
   if (!hours?.open || !hours?.close || !hours.days?.length) {
     return { state: "", label: "" };
   }
 
-  const today = now.getDay();
-  const yesterday = (today + 6) % 7;
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const yesterday = (day + 6) % 7;
   const open = timeToMinutes(hours.open);
   const close = timeToMinutes(hours.close);
   const overnight = close <= open;
-  const openToday = hours.days.includes(today);
+  const openToday = hours.days.includes(day);
   const openYesterday = hours.days.includes(yesterday);
 
   let isOpen = false;
@@ -988,6 +1064,33 @@ function getOpeningStatus(place, now = new Date()) {
 function timeToMinutes(value) {
   const [hour, minute] = String(value || "00:00").split(":").map(Number);
   return hour * 60 + minute;
+}
+
+function getOpenStatusForFilter(place) {
+  if (!openFilterTime) return getOpeningStatus(place);
+  const day = openFilterDay === "" ? new Date().getDay() : Number(openFilterDay);
+  return getOpeningStatusAt(place, day, timeToMinutes(openFilterTime));
+}
+
+function getPlaceArea(place) {
+  return parseArea(place.address);
+}
+
+function parseArea(address) {
+  const text = String(address || "").trim();
+  if (!text) return "Khác";
+  const patterns = [
+    /qu(?:ậ|a)n\s+[^,]+/i,
+    /\bq\.?\s*\d+/i,
+    /huy(?:ệ|e)n\s+[^,]+/i,
+    /(?:tp\.?|th(?:à|a)nh ph(?:ố|o))\s+[^,]+/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[0].replace(/\s+/g, " ").trim();
+  }
+  const parts = text.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "Khác";
 }
 
 function createMarkerIcon(place, selected) {
@@ -1091,6 +1194,10 @@ function renderPlaceDetail() {
             <i data-lucide="share-2"></i>
             <span>Chia sẻ</span>
           </button>
+          <button class="ghost-button" type="button" data-detail-action="itinerary" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="${itinerary.includes(place.id) ? "calendar-minus" : "calendar-plus"}"></i>
+            <span>${itinerary.includes(place.id) ? "Bỏ lịch trình" : "Thêm lịch trình"}</span>
+          </button>
           <button class="ghost-button" type="button" data-detail-action="visit" data-id="${escapeAttr(place.id)}">
             <i data-lucide="calendar-check"></i>
             <span>Đã ghé</span>
@@ -1136,6 +1243,9 @@ function handlePlaceDetailAction(event) {
       break;
     case "share":
       sharePlace(place);
+      break;
+    case "itinerary":
+      toggleItinerary(place.id);
       break;
     case "visit":
       markPlaceVisited(place.id);
@@ -1581,11 +1691,44 @@ function resetFilters() {
   activeTypes = new Set(TYPES.map((type) => type.key));
   activePurposes = new Set();
   activeTags = new Set();
+  activeAreas = new Set();
   openNowOnly = false;
+  openFilterDay = "";
+  openFilterTime = "";
+  priceRange = { min: 1, max: 4 };
+  maxDistanceKm = 0;
   els.globalSearch.value = "";
   els.sortMode.value = "fit";
+  els.openFilterDay.value = "";
+  els.openFilterTime.value = "";
+  els.priceMin.value = "1";
+  els.priceMax.value = "4";
+  els.distanceFilter.value = "0";
+  syncRangeLabels();
   syncFilterButtons();
   render();
+}
+
+function handlePriceRangeInput() {
+  let min = Number(els.priceMin.value);
+  let max = Number(els.priceMax.value);
+  if (min > max) {
+    if (document.activeElement === els.priceMin) {
+      max = min;
+      els.priceMax.value = String(max);
+    } else {
+      min = max;
+      els.priceMin.value = String(min);
+    }
+  }
+  priceRange = { min, max };
+  syncRangeLabels();
+  render();
+}
+
+function syncRangeLabels() {
+  els.priceRangeLabel.textContent = `${formatPrice(priceRange.min)} – ${formatPrice(priceRange.max)}`;
+  els.distanceLabel.textContent = maxDistanceKm > 0 ? `${maxDistanceKm} km` : "Tắt";
 }
 
 function syncFilterButtons() {
@@ -1597,6 +1740,9 @@ function syncFilterButtons() {
   });
   els.tagFilters.querySelectorAll("[data-tag]").forEach((button) => {
     button.setAttribute("aria-pressed", String(activeTags.has(button.dataset.tag)));
+  });
+  els.areaFilters.querySelectorAll("[data-area]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(activeAreas.has(button.dataset.area)));
   });
   els.openNowFilter.setAttribute("aria-pressed", String(openNowOnly));
 }
@@ -1636,6 +1782,168 @@ function randomNearbyPlace(radiusMeters = RANDOM_NEARBY_RADIUS) {
     : withDistance.sort((a, b) => a.distance - b.distance).slice(0, Math.min(5, withDistance.length));
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   return pick.place;
+}
+
+function toggleItinerary(id) {
+  if (!getPlace(id)) return;
+  const index = itinerary.indexOf(id);
+  if (index >= 0) {
+    itinerary.splice(index, 1);
+    showStatus("Đã bỏ quán khỏi lịch trình.");
+  } else {
+    itinerary.push(id);
+    showStatus("Đã thêm quán vào lịch trình.");
+  }
+  render();
+}
+
+function handleItineraryAction(event) {
+  const button = event.target.closest("[data-itinerary-action]");
+  if (!button) return;
+  const action = button.dataset.itineraryAction;
+
+  if (action === "directions") {
+    openItineraryDirections();
+    return;
+  }
+  if (action === "clear") {
+    itinerary = [];
+    render();
+    showStatus("Đã xóa lịch trình.");
+    return;
+  }
+
+  const id = button.dataset.id;
+  const index = itinerary.indexOf(id);
+  if (index < 0) return;
+
+  if (action === "remove") {
+    itinerary.splice(index, 1);
+  } else if (action === "up" && index > 0) {
+    [itinerary[index - 1], itinerary[index]] = [itinerary[index], itinerary[index - 1]];
+  } else if (action === "down" && index < itinerary.length - 1) {
+    [itinerary[index + 1], itinerary[index]] = [itinerary[index], itinerary[index + 1]];
+  } else if (action === "select") {
+    selectPlace(id, true);
+    return;
+  }
+  render();
+}
+
+function renderItinerary() {
+  if (!els.itineraryContent) return;
+  const stops = itinerary.map((id) => getPlace(id)).filter(Boolean);
+  itinerary = stops.map((place) => place.id);
+
+  els.itineraryMeta.textContent = `${stops.length} quán`;
+
+  if (stops.length === 0) {
+    els.itineraryContent.innerHTML = `
+      <div class="itinerary-empty">
+        <i data-lucide="route"></i>
+        <span>Bấm "Thêm lịch trình" ở chi tiết quán để lên kế hoạch đi nhiều quán.</span>
+      </div>
+    `;
+    return;
+  }
+
+  const total = itineraryTotalDistance(stops);
+  const rows = stops.map((place, index) => `
+    <div class="itinerary-stop">
+      <span class="itinerary-index">${index + 1}</span>
+      <button class="itinerary-name" type="button" data-itinerary-action="select" data-id="${escapeAttr(place.id)}">
+        <strong>${escapeHtml(place.name)}</strong>
+        <span>${escapeHtml(place.address || "Chưa có địa chỉ")}</span>
+      </button>
+      <div class="itinerary-stop-actions">
+        <button class="icon-button" type="button" data-itinerary-action="up" data-id="${escapeAttr(place.id)}" title="Lên" aria-label="Lên" ${index === 0 ? "disabled" : ""}>
+          <i data-lucide="chevron-up"></i>
+        </button>
+        <button class="icon-button" type="button" data-itinerary-action="down" data-id="${escapeAttr(place.id)}" title="Xuống" aria-label="Xuống" ${index === stops.length - 1 ? "disabled" : ""}>
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <button class="icon-button" type="button" data-itinerary-action="remove" data-id="${escapeAttr(place.id)}" title="Bỏ" aria-label="Bỏ">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+    </div>
+  `).join("");
+
+  els.itineraryContent.innerHTML = `
+    <div class="itinerary-list">${rows}</div>
+    <div class="itinerary-summary">
+      <span>Tổng quãng đường (đường chim bay)</span>
+      <strong>${total > 0 ? formatRouteDistance(total) : "-"}</strong>
+    </div>
+    <div class="data-actions">
+      <button class="primary-button" type="button" data-itinerary-action="directions" ${stops.length < 1 ? "disabled" : ""}>
+        <i data-lucide="navigation"></i>
+        <span>Chỉ đường lịch trình</span>
+      </button>
+      <button class="ghost-button" type="button" data-itinerary-action="clear">
+        <i data-lucide="trash-2"></i>
+        <span>Xóa hết</span>
+      </button>
+    </div>
+  `;
+}
+
+function itineraryTotalDistance(stops) {
+  let total = 0;
+  for (let i = 1; i < stops.length; i += 1) {
+    total += haversineMeters(stops[i - 1].lat, stops[i - 1].lng, stops[i].lat, stops[i].lng);
+  }
+  return total;
+}
+
+function formatRouteDistance(distance) {
+  if (distance < 1000) return `${Math.round(distance)} m`;
+  return `${(distance / 1000).toFixed(distance < 10000 ? 1 : 0)} km`;
+}
+
+function renderRoute() {
+  if (!map) return;
+  const stops = itinerary.map((id) => getPlace(id)).filter(Boolean);
+
+  if (routeLine) {
+    routeLine.remove();
+    routeLine = null;
+  }
+  if (stops.length < 2) return;
+
+  routeLine = L.polyline(stops.map((place) => [place.lat, place.lng]), {
+    color: "#6550a7",
+    weight: 4,
+    opacity: 0.8,
+    dashArray: "6 8",
+  }).addTo(map);
+}
+
+function openItineraryDirections() {
+  const stops = itinerary.map((id) => getPlace(id)).filter(Boolean);
+  if (stops.length === 0) {
+    showStatus("Lịch trình đang trống.", true);
+    return;
+  }
+  window.open(getItineraryDirectionsUrl(stops), "_blank", "noopener");
+}
+
+function getItineraryDirectionsUrl(stops) {
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  const points = stops.map((place) => `${place.lat},${place.lng}`);
+  if (userLocation) {
+    url.searchParams.set("origin", `${userLocation.lat},${userLocation.lng}`);
+    url.searchParams.set("destination", points[points.length - 1]);
+    const waypoints = points.slice(0, -1);
+    if (waypoints.length) url.searchParams.set("waypoints", waypoints.join("|"));
+  } else {
+    url.searchParams.set("origin", points[0]);
+    url.searchParams.set("destination", points[points.length - 1]);
+    const waypoints = points.slice(1, -1);
+    if (waypoints.length) url.searchParams.set("waypoints", waypoints.join("|"));
+  }
+  return url.toString();
 }
 
 async function searchGeo() {
