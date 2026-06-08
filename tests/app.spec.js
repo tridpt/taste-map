@@ -422,3 +422,39 @@ test("osrm route parsing and straight-line fallback", async ({ page }) => {
   expect(res.dur).toBe("10 phút");
   expect(res.hasLine).toBe(true);
 });
+
+test("images are stored in indexeddb and stripped from localStorage", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(async () => {
+    const sample = "data:image/png;base64,iVBORw0KGgo=";
+    const place = normalizePlace({ id: "imgp", name: "Có ảnh", lat: 10.78, lng: 106.70, images: [{ id: "img1", dataUrl: sample, category: "food" }] });
+    places.unshift(place);
+    savePlaces();
+    await persistImagesToDb();
+    const stored = localStorage.getItem("quan-quen-map:places:v1");
+    const inMem = places.find((p) => p.id === "imgp");
+    return {
+      localStorageHasDataUrl: stored.includes("data:image/png"),
+      memoryHasDataUrl: Boolean(inMem.images[0].dataUrl),
+      cacheHas: imageCache.get("img1") === sample,
+    };
+  });
+  expect(res.localStorageHasDataUrl).toBe(false);
+  expect(res.memoryHasDataUrl).toBe(true);
+  expect(res.cacheHas).toBe(true);
+});
+
+test("images rehydrate from indexeddb after reload", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const sample = "data:image/png;base64,iVBORw0KGgo=";
+    const place = normalizePlace({ id: "imgp", name: "Có ảnh", lat: 10.78, lng: 106.70, images: [{ id: "img1", dataUrl: sample, category: "food" }] });
+    places.unshift(place);
+    savePlaces();
+    await persistImagesToDb();
+  });
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => Boolean(places.find((x) => x.id === "imgp")?.images?.[0]?.dataUrl)))
+    .toBe(true);
+});

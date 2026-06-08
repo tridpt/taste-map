@@ -6,6 +6,8 @@ const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
 const TYPES_KEY = "quan-quen-map:types:v1";
 const COLLECTIONS_KEY = "quan-quen-map:collections:v1";
+const IMAGE_DB_NAME = "quan-quen-map-images";
+const IMAGE_STORE = "images";
 const ITINERARIES_KEY = "quan-quen-map:itineraries:v1";
 const THEME_KEY = "quan-quen-map:theme:v1";
 const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
@@ -82,6 +84,10 @@ let typeManagerOpen = false;
 let lastFocusedBeforeEditor = null;
 let heatLayer = null;
 let heatmapMode = false;
+const imageCache = new Map();
+const persistedImageIds = new Set();
+let imageDbPromise = null;
+let imageDbAvailable = true;
 let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
@@ -186,6 +192,7 @@ function init() {
   setupInstallPrompt();
   registerServiceWorker();
   handleSharedLaunch();
+  initImages();
 }
 
 function cacheElements() {
@@ -693,7 +700,12 @@ function loadPlaces() {
 }
 
 function savePlaces() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(places));
+  const serialized = places.map((place) => ({
+    ...place,
+    images: place.images.map((image) => ({ id: image.id, category: image.category })),
+  }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+  persistImagesToDb();
   renderDataPanel();
 }
 
@@ -735,20 +747,126 @@ function isValidPlace(place) {
 function normalizeImages(images) {
   if (!Array.isArray(images)) return [];
   const validCategory = new Set(PHOTO_CATEGORIES.map((cat) => cat.key));
-  return images
-    .map((photo) => {
-      if (typeof photo === "string") {
-        return { id: makeId(), dataUrl: photo, category: "other" };
+  const out = [];
+  for (const photo of images.slice(0, 8)) {
+    if (typeof photo === "string") {
+      if (photo.startsWith("data:image/")) {
+        out.push({ id: makeId(), category: "other", dataUrl: photo });
       }
-      return {
-        id: String(photo.id || makeId()),
-        dataUrl: String(photo.dataUrl || ""),
-        category: validCategory.has(photo.category) ? photo.category : "other",
-      };
-    })
-    .filter((photo) => photo.dataUrl.startsWith("data:image/"))
-    .slice(0, 8);
+      continue;
+    }
+    if (!photo || !photo.id) continue;
+    const category = validCategory.has(photo.category) ? photo.category : "other";
+    const entry = { id: String(photo.id), category };
+    if (typeof photo.dataUrl === "string" && photo.dataUrl.startsWith("data:image/")) {
+      entry.dataUrl = photo.dataUrl;
+    }
+    out.push(entry);
+  }
+  return out;
 }
+
+function imageDataUrl(image) {
+  if (!image) return "";
+  return image.dataUrl || imageCache.get(image.id) || "";
+}
+
+function openImageDb() {
+  if (imageDbPromise) return imageDbPromise;
+  imageDbPromise = new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      imageDbAvailable = false;
+      reject(new Error("IndexedDB không khả dụng"));
+      return;
+    }
+    const request = indexedDB.open(IMAGE_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IMAGE_STORE)) db.createObjectStore(IMAGE_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => {
+      imageDbAvailable = false;
+      reject(request.error);
+    };
+  });
+  return imageDbPromise;
+}
+
+async function loadImagesFromDb() {
+  try {
+    const db = await openImageDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IMAGE_STORE, "readonly");
+      const store = tx.objectStore(IMAGE_STORE);
+      const keysReq = store.getAllKeys();
+      const valuesReq = store.getAll();
+      tx.oncomplete = () => {
+        keysReq.result.forEach((key, index) => {
+          imageCache.set(String(key), valuesReq.result[index]);
+          persistedImageIds.add(String(key));
+        });
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    imageDbAvailable = false;
+  }
+}
+
+function writeImageToDb(id, dataUrl) {
+  return new Promise((resolve) => {
+    openImageDb()
+      .then((db) => {
+        const tx = db.transaction(IMAGE_STORE, "readwrite");
+        tx.objectStore(IMAGE_STORE).put(dataUrl, id);
+        tx.oncomplete = () => {
+          persistedImageIds.add(id);
+          resolve(true);
+        };
+        tx.onerror = () => resolve(false);
+      })
+      .catch(() => resolve(false));
+  });
+}
+
+function persistImagesToDb() {
+  if (!imageDbAvailable) return Promise.resolve();
+  const writes = [];
+  places.forEach((place) => {
+    place.images.forEach((image) => {
+      if (!image.dataUrl) return;
+      imageCache.set(image.id, image.dataUrl);
+      if (!persistedImageIds.has(image.id)) {
+        writes.push(writeImageToDb(image.id, image.dataUrl));
+      }
+    });
+  });
+  return Promise.allSettled(writes);
+}
+
+function hydratePlaceImages() {
+  places.forEach((place) => {
+    place.images.forEach((image) => {
+      if (!image.dataUrl) {
+        const cached = imageCache.get(image.id);
+        if (cached) image.dataUrl = cached;
+      }
+    });
+    place.images = place.images.filter((image) => image.dataUrl);
+  });
+}
+
+async function initImages() {
+  await loadImagesFromDb();
+  hydratePlaceImages();
+  await persistImagesToDb();
+  savePlaces();
+  render();
+}
+
+
 
 function normalizeOpeningHours(hours) {
   const days = Array.isArray(hours?.days)
@@ -1077,7 +1195,7 @@ function renderList(filtered) {
     const selected = place.id === selectedId ? " selected" : "";
     const status = getOpeningStatus(place);
     const distance = formatDistance(getDistanceFromUser(place));
-    const thumb = place.images[0]?.dataUrl || "";
+    const thumb = imageDataUrl(place.images[0]);
     const tags = place.tags.slice(0, 3).map((tag) => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join("");
     const ratings = PURPOSES.map((purpose) => {
       const value = place.ratings[purpose.key] || 0;
@@ -1428,7 +1546,7 @@ function renderPlaceDetail() {
   const type = getType(place.type);
   const status = getOpeningStatus(place);
   const distance = formatDistance(getDistanceFromUser(place));
-  const photo = place.images[0]?.dataUrl || "";
+  const photo = imageDataUrl(place.images[0]);
   const recentVisits = place.visits.slice(0, 3);
   const lastVisit = recentVisits[0]?.date || place.lastVisit || "";
   const tags = place.tags.slice(0, 5).map((tag) => `
@@ -1715,7 +1833,10 @@ function openEditor(place = null) {
   els.placeTags.value = (data.tags || []).join(", ");
   els.placeNotes.value = data.notes || "";
   els.favoritePlace.checked = Boolean(data.favorite);
-  editorPhotos = normalizeImages(data.images);
+  editorPhotos = normalizeImages(data.images).map((image) => ({
+    ...image,
+    dataUrl: imageDataUrl(image),
+  })).filter((image) => image.dataUrl);
   editorVisits = normalizeVisits(data.visits);
   editorOpeningDays = new Set(normalizeOpeningHours(data.openingHours).days);
   els.openingOpen.value = data.openingHours?.open || "";
@@ -1845,7 +1966,7 @@ function renderEditorPhotos() {
       if (photos.length === 0) return "";
       const tiles = photos.map((photo) => `
         <div class="photo-tile">
-          <img src="${escapeAttr(photo.dataUrl)}" alt="Ảnh quán ${escapeAttr(cat.label)}" />
+          <img src="${escapeAttr(imageDataUrl(photo))}" alt="Ảnh quán ${escapeAttr(cat.label)}" />
           <select class="photo-category" data-photo-category="${escapeAttr(photo.id)}" aria-label="Album ảnh">
             ${optionsFor(photo.category || "other")}
           </select>
@@ -3621,7 +3742,13 @@ function renderDataPanel() {
   els.dataPlaceCount.textContent = String(places.length);
   els.dataBackupAt.textContent = lastExport ? formatRelativeDays(lastExport) : "Chưa có";
   els.dataGistStatus.textContent = getGistStatusLabel(settings);
-  els.dataStorageUsage.textContent = formatBytes(getAppStorageBytes());
+  const bytes = getAppStorageBytes();
+  els.dataStorageUsage.textContent = formatBytes(bytes);
+  const nearFull = bytes > 4_000_000;
+  els.dataStorageUsage.classList.toggle("storage-warning", nearFull);
+  els.dataStorageUsage.title = nearFull
+    ? "LocalStorage gần đầy. Nên xuất backup; ảnh đã được lưu riêng trong IndexedDB."
+    : "";
   if (document.activeElement !== els.gistToken) els.gistToken.value = settings.token || "";
   if (document.activeElement !== els.gistId) els.gistId.value = settings.gistId || "";
 }

@@ -2450,3 +2450,7 @@ body.pin-mode #map {
   background: var(--muted);
   background-clip: padding-box;
 }
+
+.storage-warning {
+  color: var(--tomato);
+}
