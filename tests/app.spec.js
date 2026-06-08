@@ -363,3 +363,16 @@ test("editor panel is an accessible dialog with focus management", async ({ page
   const focusBack = await page.evaluate(() => document.activeElement === document.getElementById("newPlaceBtn"));
   expect(focusBack).toBe(true);
 });
+
+test("photos keep album category", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const sample = "data:image/png;base64,iVBORw0KGgo=";
+    return normalizeImages([
+      { id: "a", dataUrl: sample, category: "menu" },
+      { id: "b", dataUrl: sample, category: "bogus" },
+      sample,
+    ]).map((img) => img.category);
+  });
+  expect(res).toEqual(["menu", "other", "other"]);
+});

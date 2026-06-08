@@ -12,6 +12,12 @@ const BACKUP_REMINDER_DAYS = 7;
 const RECENT_RECOMMENDATION_DAYS = 14;
 const RANDOM_NEARBY_RADIUS = 3000;
 const PRICE_ESTIMATE_VND = { 1: 40000, 2: 80000, 3: 150000, 4: 300000 };
+const PHOTO_CATEGORIES = [
+  { key: "food", label: "Món" },
+  { key: "space", label: "Không gian" },
+  { key: "menu", label: "Menu" },
+  { key: "other", label: "Khác" },
+];
 const STALE_VISIT_DAYS = 45;
 const STALE_FAVORITE_DAYS = 30;
 const GIST_FILENAME = "taste-map-backup.json";
@@ -266,6 +272,7 @@ function cacheElements() {
     "addPhotoBtn",
     "placePhotosInput",
     "photoGallery",
+    "photoCategory",
     "openingDays",
     "openingOpen",
     "openingClose",
@@ -563,6 +570,15 @@ function bindEvents() {
     editorPhotos = editorPhotos.filter((photo) => photo.id !== button.dataset.photoId);
     renderEditorPhotos();
   });
+  els.photoGallery.addEventListener("change", (event) => {
+    const select = event.target.closest("[data-photo-category]");
+    if (!select) return;
+    const photo = editorPhotos.find((item) => item.id === select.dataset.photoCategory);
+    if (photo) {
+      photo.category = select.value;
+      renderEditorPhotos();
+    }
+  });
 
   els.openingDays.addEventListener("click", (event) => {
     const button = event.target.closest("[data-day]");
@@ -683,14 +699,16 @@ function isValidPlace(place) {
 
 function normalizeImages(images) {
   if (!Array.isArray(images)) return [];
+  const validCategory = new Set(PHOTO_CATEGORIES.map((cat) => cat.key));
   return images
     .map((photo) => {
       if (typeof photo === "string") {
-        return { id: makeId(), dataUrl: photo };
+        return { id: makeId(), dataUrl: photo, category: "other" };
       }
       return {
         id: String(photo.id || makeId()),
         dataUrl: String(photo.dataUrl || ""),
+        category: validCategory.has(photo.category) ? photo.category : "other",
       };
     })
     .filter((photo) => photo.dataUrl.startsWith("data:image/"))
@@ -1736,7 +1754,8 @@ async function handlePhotoSelection() {
   try {
     const remainingSlots = Math.max(0, 8 - editorPhotos.length);
     const selected = files.slice(0, remainingSlots);
-    const photos = await Promise.all(selected.map(readCompressedPhoto));
+    const category = els.photoCategory.value || "other";
+    const photos = await Promise.all(selected.map((file) => readCompressedPhoto(file, category)));
     editorPhotos = [...editorPhotos, ...photos.filter(Boolean)];
     renderEditorPhotos();
     if (files.length > selected.length) {
@@ -1747,9 +1766,8 @@ async function handlePhotoSelection() {
   }
 }
 
-function readCompressedPhoto(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+function readCompressedPhoto(file, category = "other") {
+  return new Promise((resolve, reject) => {    const reader = new FileReader();
     reader.onerror = reject;
     reader.onload = () => {
       const image = new Image();
@@ -1767,6 +1785,7 @@ function readCompressedPhoto(file) {
         resolve({
           id: makeId(),
           dataUrl: canvas.toDataURL("image/jpeg", 0.82),
+          category,
         });
       };
       image.src = reader.result;
@@ -1776,14 +1795,38 @@ function readCompressedPhoto(file) {
 }
 
 function renderEditorPhotos() {
-  els.photoGallery.innerHTML = editorPhotos.map((photo) => `
-    <div class="photo-tile">
-      <img src="${escapeAttr(photo.dataUrl)}" alt="Ảnh quán" />
-      <button type="button" data-photo-id="${escapeAttr(photo.id)}" title="Xóa ảnh" aria-label="Xóa ảnh">
-        <i data-lucide="x"></i>
-      </button>
-    </div>
-  `).join("");
+  if (editorPhotos.length === 0) {
+    els.photoGallery.innerHTML = "";
+    return;
+  }
+
+  const optionsFor = (current) => PHOTO_CATEGORIES
+    .map((cat) => `<option value="${cat.key}"${cat.key === current ? " selected" : ""}>${escapeHtml(cat.label)}</option>`)
+    .join("");
+
+  els.photoGallery.innerHTML = PHOTO_CATEGORIES
+    .map((cat) => {
+      const photos = editorPhotos.filter((photo) => (photo.category || "other") === cat.key);
+      if (photos.length === 0) return "";
+      const tiles = photos.map((photo) => `
+        <div class="photo-tile">
+          <img src="${escapeAttr(photo.dataUrl)}" alt="Ảnh quán ${escapeAttr(cat.label)}" />
+          <select class="photo-category" data-photo-category="${escapeAttr(photo.id)}" aria-label="Album ảnh">
+            ${optionsFor(photo.category || "other")}
+          </select>
+          <button type="button" data-photo-id="${escapeAttr(photo.id)}" title="Xóa ảnh" aria-label="Xóa ảnh">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+      `).join("");
+      return `
+        <div class="photo-album">
+          <h4 class="photo-album-title">${escapeHtml(cat.label)} <span>${photos.length}</span></h4>
+          <div class="photo-album-grid">${tiles}</div>
+        </div>
+      `;
+    })
+    .join("");
   refreshIcons();
 }
 
