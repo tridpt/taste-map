@@ -861,19 +861,19 @@ svg {
 .below-map-panels {
   display: grid;
   grid-template-columns: minmax(300px, 1.1fr) minmax(240px, 0.8fr) minmax(280px, 1fr);
+  grid-auto-rows: 232px;
   gap: 12px;
-  max-height: 260px;
+  max-height: 256px;
   padding: 12px;
-  overflow: auto;
+  overflow-y: auto;
   background: var(--bg);
   border-top: 1px solid var(--line);
 }
 
 .below-map-panels .panel {
   margin: 0;
-  align-self: start;
-  max-height: 236px;
   overflow: auto;
+  align-content: start;
 }
 
 .below-map-panels .recommendation-panel {
