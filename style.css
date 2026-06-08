@@ -55,9 +55,11 @@ textarea:focus-visible {
 }
 
 .app-shell {
+  height: 100dvh;
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .topbar {
@@ -267,9 +269,11 @@ svg {
 
 .workspace {
   min-height: 0;
+  height: calc(100dvh - 72px);
   display: grid;
   grid-template-columns: minmax(286px, 360px) minmax(0, 1fr);
   background: var(--bg);
+  overflow: hidden;
 }
 
 .workspace.editor-open {
@@ -279,7 +283,7 @@ svg {
 .sidebar {
   min-width: 0;
   display: grid;
-  grid-template-rows: repeat(4, auto) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border-right: 1px solid var(--line);
@@ -731,17 +735,74 @@ svg {
   text-align: center;
 }
 
+.map-column {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(320px, 1fr) auto;
+  overflow: hidden;
+  background: var(--bg);
+}
+
 .map-stage {
   min-width: 0;
+  min-height: 0;
   position: relative;
+  overflow: hidden;
   background: #d8e6df;
 }
 
 #map {
   width: 100%;
   height: 100%;
-  min-height: calc(100dvh - 72px);
+  min-height: 0;
   z-index: 1;
+}
+
+.below-map-panels {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 12px;
+  max-height: 260px;
+  padding: 12px;
+  overflow: auto;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.below-map-panels .panel {
+  margin: 0;
+}
+
+.below-map-panels .recommendation-panel {
+  align-content: start;
+}
+
+.below-map-panels .data-panel {
+  grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.1fr);
+  align-content: start;
+  column-gap: 12px;
+}
+
+.below-map-panels .data-panel .panel-heading,
+.below-map-panels .data-panel .backup-reminder {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.below-map-panels .data-panel .gist-sync {
+  grid-column: 2;
+  grid-row: 2 / span 3;
+}
+
+.below-map-panels .data-panel > .data-status-grid {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.below-map-panels .data-panel > .data-actions {
+  grid-column: 1;
+  grid-row: 3;
 }
 
 .map-toolbar {
@@ -1301,7 +1362,9 @@ body.pin-mode #map {
 
 @media (max-width: 860px) {
   .app-shell {
+    height: auto;
     min-height: auto;
+    overflow: visible;
   }
 
   .topbar {
@@ -1326,8 +1389,16 @@ body.pin-mode #map {
 
   .workspace,
   .workspace.editor-open {
+    height: auto;
     display: flex;
     flex-direction: column;
+    overflow: visible;
+  }
+
+  .map-column {
+    order: 1;
+    display: block;
+    overflow: visible;
   }
 
   .sidebar {
@@ -1353,12 +1424,36 @@ body.pin-mode #map {
   }
 
   .map-stage {
-    order: 1;
     min-height: 56dvh;
   }
 
   #map {
+    height: 56dvh;
     min-height: 56dvh;
+  }
+
+  .below-map-panels {
+    display: block;
+    max-height: none;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .below-map-panels .panel {
+    margin-bottom: 12px;
+  }
+
+  .below-map-panels .data-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .below-map-panels .data-panel .panel-heading,
+  .below-map-panels .data-panel .backup-reminder,
+  .below-map-panels .data-panel .gist-sync,
+  .below-map-panels .data-panel > .data-status-grid,
+  .below-map-panels .data-panel > .data-actions {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .map-toolbar {

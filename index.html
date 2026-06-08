@@ -124,88 +124,6 @@
           </div>
         </section>
 
-        <section class="panel recommendation-panel">
-          <div class="panel-heading">
-            <h2>Hôm nay đi đâu?</h2>
-          </div>
-          <div class="field compact">
-            <label for="suggestMood">Mood</label>
-            <select id="suggestMood">
-              <option value="work">Làm việc</option>
-              <option value="date">Đi date</option>
-              <option value="quiet">Yên tĩnh</option>
-              <option value="quick">Ăn nhanh</option>
-              <option value="taste">Ăn ngon</option>
-              <option value="nearby">Gần tôi</option>
-            </select>
-          </div>
-          <div id="recommendationList" class="recommendation-list"></div>
-        </section>
-
-        <section class="panel data-panel">
-          <div class="panel-heading">
-            <h2>Dữ liệu</h2>
-            <span id="backupStatus" class="meta-count">Chưa backup</span>
-          </div>
-          <div id="backupReminder" class="backup-reminder hidden">
-            <i data-lucide="archive"></i>
-            <span>Nên xuất backup định kỳ.</span>
-            <button id="dismissBackupReminderBtn" class="text-button" type="button">Nhắc sau</button>
-          </div>
-          <div class="data-status-grid">
-            <div class="data-status-item">
-              <span>Số quán</span>
-              <strong id="dataPlaceCount">0</strong>
-            </div>
-            <div class="data-status-item">
-              <span>Backup gần nhất</span>
-              <strong id="dataBackupAt">Chưa có</strong>
-            </div>
-            <div class="data-status-item">
-              <span>Gist sync</span>
-              <strong id="dataGistStatus">Chưa cấu hình</strong>
-            </div>
-            <div class="data-status-item">
-              <span>LocalStorage</span>
-              <strong id="dataStorageUsage">0 KB</strong>
-            </div>
-          </div>
-          <div class="data-actions">
-            <button id="encryptedExportBtn" class="ghost-button" type="button">
-              <i data-lucide="lock-keyhole"></i>
-              <span>Backup mã hóa</span>
-            </button>
-            <button id="plainExportBtn" class="ghost-button" type="button">
-              <i data-lucide="file-json"></i>
-              <span>JSON thường</span>
-            </button>
-          </div>
-          <div class="gist-sync">
-            <div class="field">
-              <label for="gistToken">GitHub token</label>
-              <input id="gistToken" type="password" autocomplete="off" placeholder="token có quyền gist" />
-            </div>
-            <div class="field">
-              <label for="gistId">Gist ID</label>
-              <input id="gistId" type="text" autocomplete="off" placeholder="để trống để tạo gist mới" />
-            </div>
-            <div class="data-actions">
-              <button id="saveGistSettingsBtn" class="ghost-button" type="button">
-                <i data-lucide="save"></i>
-                <span>Lưu cấu hình</span>
-              </button>
-              <button id="pushGistBtn" class="ghost-button" type="button">
-                <i data-lucide="cloud-upload"></i>
-                <span>Đẩy lên</span>
-              </button>
-              <button id="pullGistBtn" class="ghost-button" type="button">
-                <i data-lucide="cloud-download"></i>
-                <span>Kéo về</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
         <section class="panel list-panel">
           <div class="panel-heading">
             <h2>Quán đã lưu</h2>
@@ -219,26 +137,112 @@
         </section>
       </aside>
 
-      <section class="map-stage" aria-label="Bản đồ quán quen">
-        <div class="map-toolbar">
-          <div class="geo-search-wrap">
-            <label class="geo-search" for="geoSearch">
-              <i data-lucide="map-pinned" aria-hidden="true"></i>
-              <input id="geoSearch" type="search" autocomplete="off" placeholder="Tìm địa điểm hoặc địa chỉ" />
-              <button id="geoSearchBtn" class="icon-button dark" type="button" title="Tìm vị trí" aria-label="Tìm vị trí">
-                <i data-lucide="search"></i>
-              </button>
-            </label>
-            <div id="geoResults" class="geo-results hidden"></div>
+      <div class="map-column">
+        <section class="map-stage" aria-label="Bản đồ quán quen">
+          <div class="map-toolbar">
+            <div class="geo-search-wrap">
+              <label class="geo-search" for="geoSearch">
+                <i data-lucide="map-pinned" aria-hidden="true"></i>
+                <input id="geoSearch" type="search" autocomplete="off" placeholder="Tìm địa điểm hoặc địa chỉ" />
+                <button id="geoSearchBtn" class="icon-button dark" type="button" title="Tìm vị trí" aria-label="Tìm vị trí">
+                  <i data-lucide="search"></i>
+                </button>
+              </label>
+              <div id="geoResults" class="geo-results hidden"></div>
+            </div>
+            <button id="pinModeBtn" class="ghost-button dark" type="button" aria-pressed="false">
+              <i data-lucide="crosshair"></i>
+              <span>Ghim</span>
+            </button>
           </div>
-          <button id="pinModeBtn" class="ghost-button dark" type="button" aria-pressed="false">
-            <i data-lucide="crosshair"></i>
-            <span>Ghim</span>
-          </button>
-        </div>
-        <div id="map"></div>
-        <div id="mapStatus" class="map-status hidden" role="status"></div>
-      </section>
+          <div id="map"></div>
+          <div id="mapStatus" class="map-status hidden" role="status"></div>
+        </section>
+
+        <section class="below-map-panels" aria-label="Gợi ý và dữ liệu">
+          <section class="panel recommendation-panel">
+            <div class="panel-heading">
+              <h2>Hôm nay đi đâu?</h2>
+            </div>
+            <div class="field compact">
+              <label for="suggestMood">Mood</label>
+              <select id="suggestMood">
+                <option value="work">Làm việc</option>
+                <option value="date">Đi date</option>
+                <option value="quiet">Yên tĩnh</option>
+                <option value="quick">Ăn nhanh</option>
+                <option value="taste">Ăn ngon</option>
+                <option value="nearby">Gần tôi</option>
+              </select>
+            </div>
+            <div id="recommendationList" class="recommendation-list"></div>
+          </section>
+
+          <section class="panel data-panel">
+            <div class="panel-heading">
+              <h2>Dữ liệu</h2>
+              <span id="backupStatus" class="meta-count">Chưa backup</span>
+            </div>
+            <div id="backupReminder" class="backup-reminder hidden">
+              <i data-lucide="archive"></i>
+              <span>Nên xuất backup định kỳ.</span>
+              <button id="dismissBackupReminderBtn" class="text-button" type="button">Nhắc sau</button>
+            </div>
+            <div class="data-status-grid">
+              <div class="data-status-item">
+                <span>Số quán</span>
+                <strong id="dataPlaceCount">0</strong>
+              </div>
+              <div class="data-status-item">
+                <span>Backup gần nhất</span>
+                <strong id="dataBackupAt">Chưa có</strong>
+              </div>
+              <div class="data-status-item">
+                <span>Gist sync</span>
+                <strong id="dataGistStatus">Chưa cấu hình</strong>
+              </div>
+              <div class="data-status-item">
+                <span>LocalStorage</span>
+                <strong id="dataStorageUsage">0 KB</strong>
+              </div>
+            </div>
+            <div class="data-actions">
+              <button id="encryptedExportBtn" class="ghost-button" type="button">
+                <i data-lucide="lock-keyhole"></i>
+                <span>Backup mã hóa</span>
+              </button>
+              <button id="plainExportBtn" class="ghost-button" type="button">
+                <i data-lucide="file-json"></i>
+                <span>JSON thường</span>
+              </button>
+            </div>
+            <div class="gist-sync">
+              <div class="field">
+                <label for="gistToken">GitHub token</label>
+                <input id="gistToken" type="password" autocomplete="off" placeholder="token có quyền gist" />
+              </div>
+              <div class="field">
+                <label for="gistId">Gist ID</label>
+                <input id="gistId" type="text" autocomplete="off" placeholder="để trống để tạo gist mới" />
+              </div>
+              <div class="data-actions">
+                <button id="saveGistSettingsBtn" class="ghost-button" type="button">
+                  <i data-lucide="save"></i>
+                  <span>Lưu cấu hình</span>
+                </button>
+                <button id="pushGistBtn" class="ghost-button" type="button">
+                  <i data-lucide="cloud-upload"></i>
+                  <span>Đẩy lên</span>
+                </button>
+                <button id="pullGistBtn" class="ghost-button" type="button">
+                  <i data-lucide="cloud-download"></i>
+                  <span>Kéo về</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </section>
+      </div>
 
       <aside id="editorPanel" class="editor-panel" aria-label="Thông tin quán" aria-hidden="true">
         <form id="placeForm" autocomplete="off">
