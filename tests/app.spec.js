@@ -402,3 +402,23 @@ test("deleting custom type reassigns places to cafe", async ({ page }) => {
   expect(res.exists).toBe(false);
   expect(res.placeType).toBe("cafe");
 });
+
+test("osrm route parsing and straight-line fallback", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const data = { routes: [{ distance: 1234, duration: 600, geometry: { coordinates: [[106.70, 10.77], [106.71, 10.78]] } }] };
+    const parsed = parseOsrmRoute(data, "k");
+    itinerary = [places[0].id, places[1].id];
+    render();
+    return {
+      latlngs: parsed.latlngs,
+      dist: parsed.distanceMeters,
+      dur: formatDuration(parsed.durationSec),
+      hasLine: Boolean(routeLine),
+    };
+  });
+  expect(res.latlngs).toEqual([[10.77, 106.70], [10.78, 106.71]]);
+  expect(res.dist).toBe(1234);
+  expect(res.dur).toBe("10 phút");
+  expect(res.hasLine).toBe(true);
+});

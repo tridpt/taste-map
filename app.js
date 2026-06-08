@@ -72,6 +72,8 @@ let priceRange = { min: 1, max: 4 };
 let maxDistanceKm = 0;
 let itinerary = [];
 let routeLine = null;
+let routeRequestKey = "";
+let osrmRoute = null;
 let collections = [];
 let activeCollection = "";
 let savedItineraries = [];
@@ -2216,6 +2218,12 @@ function renderItinerary() {
     `;
   } else {
     const total = itineraryTotalDistance(stops);
+    const key = routeKeyOf(stops);
+    const hasReal = osrmRoute && osrmRoute.key === key;
+    const summaryLabel = hasReal ? "Quãng đường thực tế" : "Tổng quãng đường (đường chim bay)";
+    const summaryValue = hasReal
+      ? `${formatRouteDistance(osrmRoute.distanceMeters)} · ${formatDuration(osrmRoute.durationSec)}`
+      : (total > 0 ? formatRouteDistance(total) : "-");
     const rows = stops.map((place, index) => `
       <div class="itinerary-stop">
         <span class="itinerary-index">${index + 1}</span>
@@ -2240,8 +2248,8 @@ function renderItinerary() {
     currentSection = `
       <div class="itinerary-list">${rows}</div>
       <div class="itinerary-summary">
-        <span>Tổng quãng đường (đường chim bay)</span>
-        <strong>${total > 0 ? formatRouteDistance(total) : "-"}</strong>
+        <span>${summaryLabel}</span>
+        <strong>${summaryValue}</strong>
       </div>
       <div class="data-actions">
         <button class="primary-button" type="button" data-itinerary-action="directions">
@@ -2300,19 +2308,73 @@ function formatRouteDistance(distance) {
 function renderRoute() {
   if (!map) return;
   const stops = itinerary.map((id) => getPlace(id)).filter(Boolean);
+  const key = routeKeyOf(stops);
 
   if (routeLine) {
     routeLine.remove();
     routeLine = null;
   }
-  if (stops.length < 2) return;
+  if (stops.length < 2) {
+    routeRequestKey = "";
+    osrmRoute = null;
+    return;
+  }
 
-  routeLine = L.polyline(stops.map((place) => [place.lat, place.lng]), {
+  const useOsrm = osrmRoute && osrmRoute.key === key;
+  const latlngs = useOsrm ? osrmRoute.latlngs : stops.map((place) => [place.lat, place.lng]);
+  routeLine = L.polyline(latlngs, {
     color: "#6550a7",
     weight: 4,
-    opacity: 0.8,
-    dashArray: "6 8",
+    opacity: 0.85,
+    dashArray: useOsrm ? null : "6 8",
   }).addTo(map);
+
+  if (!useOsrm && key !== routeRequestKey) {
+    routeRequestKey = key;
+    fetchOsrmRoute(stops, key);
+  }
+}
+
+function routeKeyOf(stops) {
+  return stops.map((place) => `${place.lat},${place.lng}`).join(";");
+}
+
+async function fetchOsrmRoute(stops, key) {
+  if (typeof fetch !== "function") return;
+  try {
+    const coords = stops.map((place) => `${place.lng},${place.lat}`).join(";");
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("route failed");
+    const parsed = parseOsrmRoute(await res.json(), key);
+    if (!parsed) throw new Error("no route");
+    osrmRoute = parsed;
+    if (routeKeyOf(itinerary.map((id) => getPlace(id)).filter(Boolean)) === key) {
+      renderRoute();
+      renderItinerary();
+    }
+  } catch {
+    // giữ đường chim bay làm dự phòng khi không lấy được tuyến thật
+  }
+}
+
+function parseOsrmRoute(data, key) {
+  const route = data?.routes?.[0];
+  if (!route?.geometry?.coordinates) return null;
+  return {
+    key,
+    distanceMeters: route.distance,
+    durationSec: route.duration,
+    latlngs: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+  };
+}
+
+function formatDuration(seconds) {
+  const mins = Math.round((Number(seconds) || 0) / 60);
+  if (mins < 60) return `${mins} phút`;
+  const hours = Math.floor(mins / 60);
+  const rest = mins % 60;
+  return rest ? `${hours}h${String(rest).padStart(2, "0")}` : `${hours} giờ`;
 }
 
 function openItineraryDirections() {

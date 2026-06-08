@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_VERSION = "taste-map-v18";
+const CACHE_VERSION = "taste-map-v19";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const TILE_CACHE = `${CACHE_VERSION}:tiles`;
@@ -55,6 +55,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (url.origin === "https://nominatim.openstreetmap.org") {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (url.origin === "https://router.project-osrm.org") {
     event.respondWith(fetch(request));
     return;
   }
