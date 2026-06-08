@@ -65,6 +65,7 @@ let collections = [];
 let activeCollection = "";
 let savedItineraries = [];
 let tagManagerOpen = false;
+let lastFocusedBeforeEditor = null;
 let heatLayer = null;
 let heatmapMode = false;
 let editorPhotos = [];
@@ -585,6 +586,7 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Tab") trapEditorFocus(event);
     if (event.key === "Escape") {
       els.geoResults.classList.add("hidden");
       if (pinMode) setPinMode(false);
@@ -1622,6 +1624,9 @@ function toggleTheme() {
 function openEditor(place = null) {
   const hasDraft = Boolean(place);
   const isEdit = Boolean(place?.id);
+  if (!isEditorOpen()) {
+    lastFocusedBeforeEditor = document.activeElement;
+  }
   els.workspace.classList.add("editor-open");
   els.editorPanel.setAttribute("aria-hidden", "false");
   els.editorMode.textContent = isEdit ? "Đang sửa" : (hasDraft ? "Nhập từ Maps" : "Quán mới");
@@ -1692,6 +1697,35 @@ function closeEditor() {
   renderEditorPhotos();
   renderVisitHistory();
   setTimeout(() => map?.invalidateSize(), 50);
+
+  const restore = lastFocusedBeforeEditor;
+  lastFocusedBeforeEditor = null;
+  if (restore && document.body.contains(restore)) {
+    restore.focus();
+  } else {
+    els.newPlaceBtn.focus();
+  }
+}
+
+function trapEditorFocus(event) {
+  if (event.key !== "Tab" || !isEditorOpen()) return;
+  const focusable = els.editorPanel.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  );
+  const visible = [...focusable].filter((el) => el.offsetParent !== null || el === document.activeElement);
+  if (visible.length === 0) return;
+  const first = visible[0];
+  const last = visible[visible.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  } else if (!els.editorPanel.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 async function handlePhotoSelection() {

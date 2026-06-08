@@ -345,3 +345,21 @@ test("delete tag removes it from all places", async ({ page }) => {
   expect(res.affected).toBeGreaterThan(0);
   expect(res.gone).toBe(true);
 });
+
+test("editor panel is an accessible dialog with focus management", async ({ page }) => {
+  await page.goto("/");
+  await page.click("#newPlaceBtn");
+
+  await expect(page.locator("#editorPanel")).toHaveAttribute("aria-hidden", "false");
+  await expect(page.locator("#editorPanel")).toHaveAttribute("role", "dialog");
+  await expect(page.locator("#editorPanel")).toHaveAttribute("aria-modal", "true");
+
+  await expect
+    .poll(() => page.evaluate(() => document.getElementById("editorPanel").contains(document.activeElement)))
+    .toBe(true);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#editorPanel")).toHaveAttribute("aria-hidden", "true");
+  const focusBack = await page.evaluate(() => document.activeElement === document.getElementById("newPlaceBtn"));
+  expect(focusBack).toBe(true);
+});
