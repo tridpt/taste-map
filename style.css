@@ -872,6 +872,8 @@ svg {
 .below-map-panels .panel {
   margin: 0;
   align-self: start;
+  max-height: 236px;
+  overflow: auto;
 }
 
 .below-map-panels .recommendation-panel {
