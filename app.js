@@ -5,6 +5,7 @@ const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
 const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
 const COLLECTIONS_KEY = "quan-quen-map:collections:v1";
+const ITINERARIES_KEY = "quan-quen-map:itineraries:v1";
 const THEME_KEY = "quan-quen-map:theme:v1";
 const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
 const BACKUP_REMINDER_DAYS = 7;
@@ -62,6 +63,8 @@ let itinerary = [];
 let routeLine = null;
 let collections = [];
 let activeCollection = "";
+let savedItineraries = [];
+let tagManagerOpen = false;
 let heatLayer = null;
 let heatmapMode = false;
 let editorPhotos = [];
@@ -158,6 +161,7 @@ function init() {
   syncRangeLabels();
   places = loadPlaces();
   collections = loadCollections();
+  savedItineraries = loadSavedItineraries();
   initMap();
   bindEvents();
   render();
@@ -186,6 +190,8 @@ function cacheElements() {
     "typeFilters",
     "purposeFilters",
     "tagFilters",
+    "manageTagsBtn",
+    "tagManager",
     "sortMode",
     "openNowFilter",
     "openFilterDay",
@@ -403,6 +409,13 @@ function bindEvents() {
   els.itineraryContent.addEventListener("click", handleItineraryAction);
   els.newCollectionBtn.addEventListener("click", promptNewCollection);
   els.collectionFilterList.addEventListener("click", handleCollectionFilterClick);
+  els.manageTagsBtn.addEventListener("click", () => {
+    tagManagerOpen = !tagManagerOpen;
+    els.tagManager.classList.toggle("hidden", !tagManagerOpen);
+    els.manageTagsBtn.setAttribute("aria-pressed", String(tagManagerOpen));
+    renderTagManager();
+  });
+  els.tagManager.addEventListener("click", handleTagManagerAction);
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
   els.encryptedExportBtn.addEventListener("click", exportEncryptedBackup);
   els.plainExportBtn.addEventListener("click", exportPlainBackup);
@@ -716,6 +729,7 @@ function render() {
   els.placeCount.textContent = `${places.length} ${places.length === 1 ? "quán" : "quán"} đã lưu`;
   els.filteredCount.textContent = String(filtered.length);
   renderTagFilters();
+  renderTagManager();
   renderAreaFilters();
   renderRecommendations();
   renderFavoriteReminder();
@@ -751,8 +765,102 @@ function renderTagFilters() {
   `).join("");
 }
 
-function renderAreaFilters() {
+function renderTagManager() {
+  if (!els.tagManager || !tagManagerOpen) return;
   const counts = new Map();
+  places.forEach((place) => {
+    place.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1));
+  });
+  const tags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "vi"));
+
+  if (tags.length === 0) {
+    els.tagManager.innerHTML = '<p class="stats-note">Chưa có tag nào.</p>';
+    return;
+  }
+
+  els.tagManager.innerHTML = tags.map(([tag, count]) => `
+    <div class="tag-manager-row">
+      <span class="tag-manager-name">${escapeHtml(tag)} <span>${count}</span></span>
+      <div class="tag-manager-actions">
+        <button class="icon-button" type="button" data-tag-action="rename" data-tag="${escapeAttr(tag)}" title="Đổi tên" aria-label="Đổi tên tag">
+          <i data-lucide="pencil"></i>
+        </button>
+        <button class="icon-button" type="button" data-tag-action="delete" data-tag="${escapeAttr(tag)}" title="Xóa" aria-label="Xóa tag">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function handleTagManagerAction(event) {
+  const button = event.target.closest("[data-tag-action]");
+  if (!button) return;
+  const tag = button.dataset.tag;
+  if (button.dataset.tagAction === "rename") {
+    const next = window.prompt(`Đổi tên tag "${tag}" thành:`, tag);
+    if (next === null) return;
+    const affected = renameTag(tag, next);
+    showStatus(affected ? `Đã đổi tên tag ở ${affected} quán.` : "Tên tag không hợp lệ.", !affected);
+  } else if (button.dataset.tagAction === "delete") {
+    if (!window.confirm(`Xóa tag "${tag}" khỏi tất cả quán?`)) return;
+    const affected = deleteTag(tag);
+    showStatus(`Đã xóa tag khỏi ${affected} quán.`);
+  }
+}
+
+function renameTag(oldTag, newTag) {
+  const from = String(oldTag || "").trim();
+  const to = String(newTag || "").trim().slice(0, 40);
+  if (!from || !to || from === to) return 0;
+  let affected = 0;
+  pushUndoSnapshot("đổi tên tag");
+  places.forEach((place) => {
+    if (!place.tags.includes(from)) return;
+    const next = [];
+    place.tags.forEach((tag) => {
+      const value = tag === from ? to : tag;
+      if (!next.includes(value)) next.push(value);
+    });
+    place.tags = next;
+    place.updatedAt = Date.now();
+    affected += 1;
+  });
+  if (affected) {
+    if (activeTags.has(from)) {
+      activeTags.delete(from);
+      activeTags.add(to);
+    }
+    savePlaces();
+    render();
+  } else {
+    undoStack.pop();
+  }
+  return affected;
+}
+
+function deleteTag(tag) {
+  const target = String(tag || "").trim();
+  if (!target) return 0;
+  let affected = 0;
+  pushUndoSnapshot("xóa tag");
+  places.forEach((place) => {
+    if (!place.tags.includes(target)) return;
+    place.tags = place.tags.filter((value) => value !== target);
+    place.updatedAt = Date.now();
+    affected += 1;
+  });
+  if (affected) {
+    activeTags.delete(target);
+    savePlaces();
+    render();
+  } else {
+    undoStack.pop();
+  }
+  return affected;
+}
+
+function renderAreaFilters() {  const counts = new Map();
   places.forEach((place) => {
     const area = getPlaceArea(place);
     counts.set(area, (counts.get(area) || 0) + 1);
@@ -1951,6 +2059,18 @@ function handleItineraryAction(event) {
     showStatus("Đã xóa lịch trình.");
     return;
   }
+  if (action === "save-current") {
+    saveCurrentItinerary();
+    return;
+  }
+  if (action === "load-saved") {
+    loadSavedItinerary(button.dataset.savedId);
+    return;
+  }
+  if (action === "delete-saved") {
+    deleteSavedItinerary(button.dataset.savedId);
+    return;
+  }
 
   const id = button.dataset.id;
   const index = itinerary.indexOf(id);
@@ -1976,55 +2096,82 @@ function renderItinerary() {
 
   els.itineraryMeta.textContent = `${stops.length} quán`;
 
+  let currentSection;
   if (stops.length === 0) {
-    els.itineraryContent.innerHTML = `
+    currentSection = `
       <div class="itinerary-empty">
         <i data-lucide="route"></i>
         <span>Bấm "Thêm lịch trình" ở chi tiết quán để lên kế hoạch đi nhiều quán.</span>
       </div>
     `;
-    return;
+  } else {
+    const total = itineraryTotalDistance(stops);
+    const rows = stops.map((place, index) => `
+      <div class="itinerary-stop">
+        <span class="itinerary-index">${index + 1}</span>
+        <button class="itinerary-name" type="button" data-itinerary-action="select" data-id="${escapeAttr(place.id)}">
+          <strong>${escapeHtml(place.name)}</strong>
+          <span>${escapeHtml(place.address || "Chưa có địa chỉ")}</span>
+        </button>
+        <div class="itinerary-stop-actions">
+          <button class="icon-button" type="button" data-itinerary-action="up" data-id="${escapeAttr(place.id)}" title="Lên" aria-label="Lên" ${index === 0 ? "disabled" : ""}>
+            <i data-lucide="chevron-up"></i>
+          </button>
+          <button class="icon-button" type="button" data-itinerary-action="down" data-id="${escapeAttr(place.id)}" title="Xuống" aria-label="Xuống" ${index === stops.length - 1 ? "disabled" : ""}>
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <button class="icon-button" type="button" data-itinerary-action="remove" data-id="${escapeAttr(place.id)}" title="Bỏ" aria-label="Bỏ">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+      </div>
+    `).join("");
+
+    currentSection = `
+      <div class="itinerary-list">${rows}</div>
+      <div class="itinerary-summary">
+        <span>Tổng quãng đường (đường chim bay)</span>
+        <strong>${total > 0 ? formatRouteDistance(total) : "-"}</strong>
+      </div>
+      <div class="data-actions">
+        <button class="primary-button" type="button" data-itinerary-action="directions">
+          <i data-lucide="navigation"></i>
+          <span>Chỉ đường lịch trình</span>
+        </button>
+        <button class="ghost-button" type="button" data-itinerary-action="save-current">
+          <i data-lucide="bookmark"></i>
+          <span>Lưu</span>
+        </button>
+        <button class="ghost-button" type="button" data-itinerary-action="clear">
+          <i data-lucide="trash-2"></i>
+          <span>Xóa hết</span>
+        </button>
+      </div>
+    `;
   }
 
-  const total = itineraryTotalDistance(stops);
-  const rows = stops.map((place, index) => `
-    <div class="itinerary-stop">
-      <span class="itinerary-index">${index + 1}</span>
-      <button class="itinerary-name" type="button" data-itinerary-action="select" data-id="${escapeAttr(place.id)}">
-        <strong>${escapeHtml(place.name)}</strong>
-        <span>${escapeHtml(place.address || "Chưa có địa chỉ")}</span>
-      </button>
-      <div class="itinerary-stop-actions">
-        <button class="icon-button" type="button" data-itinerary-action="up" data-id="${escapeAttr(place.id)}" title="Lên" aria-label="Lên" ${index === 0 ? "disabled" : ""}>
-          <i data-lucide="chevron-up"></i>
+  let savedSection = "";
+  if (savedItineraries.length) {
+    const savedRows = savedItineraries.map((saved) => `
+      <div class="saved-itinerary">
+        <button class="saved-itinerary-load" type="button" data-itinerary-action="load-saved" data-saved-id="${escapeAttr(saved.id)}">
+          <strong>${escapeHtml(saved.name)}</strong>
+          <span>${saved.placeIds.length} quán</span>
         </button>
-        <button class="icon-button" type="button" data-itinerary-action="down" data-id="${escapeAttr(place.id)}" title="Xuống" aria-label="Xuống" ${index === stops.length - 1 ? "disabled" : ""}>
-          <i data-lucide="chevron-down"></i>
-        </button>
-        <button class="icon-button" type="button" data-itinerary-action="remove" data-id="${escapeAttr(place.id)}" title="Bỏ" aria-label="Bỏ">
+        <button class="icon-button" type="button" data-itinerary-action="delete-saved" data-saved-id="${escapeAttr(saved.id)}" title="Xóa" aria-label="Xóa">
           <i data-lucide="x"></i>
         </button>
       </div>
-    </div>
-  `).join("");
+    `).join("");
+    savedSection = `
+      <div class="saved-itinerary-section">
+        <h3>Lịch trình đã lưu</h3>
+        <div class="saved-itinerary-list">${savedRows}</div>
+      </div>
+    `;
+  }
 
-  els.itineraryContent.innerHTML = `
-    <div class="itinerary-list">${rows}</div>
-    <div class="itinerary-summary">
-      <span>Tổng quãng đường (đường chim bay)</span>
-      <strong>${total > 0 ? formatRouteDistance(total) : "-"}</strong>
-    </div>
-    <div class="data-actions">
-      <button class="primary-button" type="button" data-itinerary-action="directions" ${stops.length < 1 ? "disabled" : ""}>
-        <i data-lucide="navigation"></i>
-        <span>Chỉ đường lịch trình</span>
-      </button>
-      <button class="ghost-button" type="button" data-itinerary-action="clear">
-        <i data-lucide="trash-2"></i>
-        <span>Xóa hết</span>
-      </button>
-    </div>
-  `;
+  els.itineraryContent.innerHTML = currentSection + savedSection;
 }
 
 function itineraryTotalDistance(stops) {
@@ -2083,6 +2230,59 @@ function getItineraryDirectionsUrl(stops) {
     if (waypoints.length) url.searchParams.set("waypoints", waypoints.join("|"));
   }
   return url.toString();
+}
+
+function loadSavedItineraries() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ITINERARIES_KEY));
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((item) => item && item.id && item.name)
+      .map((item) => ({
+        id: String(item.id),
+        name: String(item.name).trim().slice(0, 60),
+        placeIds: Array.isArray(item.placeIds) ? item.placeIds.map(String) : [],
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function saveSavedItineraries() {
+  localStorage.setItem(ITINERARIES_KEY, JSON.stringify(savedItineraries));
+}
+
+function saveCurrentItinerary() {
+  if (itinerary.length === 0) {
+    showStatus("Lịch trình đang trống.", true);
+    return;
+  }
+  const name = window.prompt("Tên lịch trình:");
+  if (name === null) return;
+  const clean = String(name).trim().slice(0, 60);
+  if (!clean) {
+    showStatus("Tên lịch trình không hợp lệ.", true);
+    return;
+  }
+  savedItineraries.push({ id: makeId(), name: clean, placeIds: [...itinerary] });
+  saveSavedItineraries();
+  render();
+  showStatus(`Đã lưu lịch trình "${clean}".`);
+}
+
+function loadSavedItinerary(id) {
+  const saved = savedItineraries.find((item) => item.id === id);
+  if (!saved) return;
+  itinerary = saved.placeIds.filter((placeId) => getPlace(placeId));
+  render();
+  showStatus(`Đã mở lịch trình "${saved.name}".`);
+}
+
+function deleteSavedItinerary(id) {
+  savedItineraries = savedItineraries.filter((item) => item.id !== id);
+  saveSavedItineraries();
+  render();
+  showStatus("Đã xóa lịch trình đã lưu.");
 }
 
 function loadCollections() {

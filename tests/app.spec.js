@@ -303,3 +303,45 @@ test("favorite reminder lists stale favorites", async ({ page }) => {
   await expect(page.locator("#favoriteReminder")).toBeVisible();
   await expect(page.locator(".favorite-reminder-item").filter({ hasText: "Ruột cũ" })).toHaveCount(1);
 });
+
+test("saved itinerary can be stored and reloaded", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    itinerary = [places[0].id, places[1].id];
+    savedItineraries.push({ id: "it1", name: "Cuối tuần", placeIds: [...itinerary] });
+    saveSavedItineraries();
+    itinerary = [];
+    render();
+    loadSavedItinerary("it1");
+    return { count: itinerary.length };
+  });
+  expect(res.count).toBe(2);
+  await expect(page.locator(".saved-itinerary")).toHaveCount(1);
+  await expect(page.locator(".saved-itinerary")).toContainText("Cuối tuần");
+});
+
+test("rename tag updates all places", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const before = places.filter((p) => p.tags.includes("wifi mạnh")).length;
+    const affected = renameTag("wifi mạnh", "wifi xịn");
+    const after = places.filter((p) => p.tags.includes("wifi xịn")).length;
+    const oldGone = places.every((p) => !p.tags.includes("wifi mạnh"));
+    return { before, affected, after, oldGone };
+  });
+  expect(res.before).toBeGreaterThan(0);
+  expect(res.affected).toBe(res.before);
+  expect(res.after).toBe(res.before);
+  expect(res.oldGone).toBe(true);
+});
+
+test("delete tag removes it from all places", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const affected = deleteTag("wifi mạnh");
+    const gone = places.every((p) => !p.tags.includes("wifi mạnh"));
+    return { affected, gone };
+  });
+  expect(res.affected).toBeGreaterThan(0);
+  expect(res.gone).toBe(true);
+});

@@ -2229,3 +2229,120 @@ body.pin-mode #map {
   font-weight: 700;
   font-size: 12px;
 }
+
+.saved-itinerary-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.saved-itinerary-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.saved-itinerary-list {
+  display: grid;
+  gap: 6px;
+}
+
+.saved-itinerary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.saved-itinerary-load {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.saved-itinerary-load strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-itinerary-load span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.saved-itinerary .icon-button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+}
+
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.field-head label {
+  margin: 0;
+}
+
+.tag-manager {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.tag-manager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tag-manager-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.tag-manager-name span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tag-manager-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.tag-manager-actions .icon-button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+}
