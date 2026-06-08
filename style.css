@@ -871,6 +871,7 @@ svg {
 
 .below-map-panels .panel {
   margin: 0;
+  align-self: start;
 }
 
 .below-map-panels .recommendation-panel {
