@@ -766,7 +766,7 @@ svg {
 
 .below-map-panels {
   display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
+  grid-template-columns: minmax(300px, 1.1fr) minmax(240px, 0.8fr) minmax(280px, 1fr);
   gap: 12px;
   max-height: 260px;
   padding: 12px;
@@ -784,30 +784,149 @@ svg {
 }
 
 .below-map-panels .data-panel {
-  grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.1fr);
+  grid-template-columns: 1fr;
   align-content: start;
-  column-gap: 12px;
+  gap: 10px;
 }
 
 .below-map-panels .data-panel .panel-heading,
 .below-map-panels .data-panel .backup-reminder {
-  grid-column: 1 / -1;
   margin-bottom: 0;
 }
 
 .below-map-panels .data-panel .gist-sync {
-  grid-column: 2;
-  grid-row: 2 / span 3;
+  grid-column: auto;
+  grid-row: auto;
 }
 
 .below-map-panels .data-panel > .data-status-grid {
-  grid-column: 1;
-  grid-row: 2;
+  grid-column: auto;
+  grid-row: auto;
 }
 
 .below-map-panels .data-panel > .data-actions {
-  grid-column: 1;
-  grid-row: 3;
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.place-detail-panel {
+  align-content: start;
+}
+
+.place-detail-content {
+  min-height: 174px;
+}
+
+.place-detail-empty {
+  min-height: 174px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.place-detail-layout {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.place-detail-media {
+  min-width: 0;
+}
+
+.place-detail-media img,
+.place-detail-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--surface-soft);
+}
+
+.place-detail-placeholder {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--detail-color, var(--teal));
+}
+
+.place-detail-placeholder svg {
+  width: 34px;
+  height: 34px;
+}
+
+.place-detail-main {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.place-detail-title {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.place-detail-title h3 {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.place-detail-title p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.place-detail-note {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.place-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.place-detail-actions .ghost-button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.place-detail-visits {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.place-detail-visits strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.place-detail-visits span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .map-toolbar {
@@ -1350,6 +1469,14 @@ body.pin-mode #map {
 }
 
 @media (max-width: 1180px) {
+  .below-map-panels {
+    grid-template-columns: minmax(300px, 1fr) minmax(260px, 0.85fr);
+  }
+
+  .below-map-panels .data-panel {
+    grid-column: 1 / -1;
+  }
+
   .workspace.editor-open {
     grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
   }

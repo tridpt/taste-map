@@ -187,6 +187,8 @@ function cacheElements() {
     "saveImportQueueBtn",
     "clearImportQueueBtn",
     "importQueueList",
+    "placeDetailMeta",
+    "placeDetailContent",
     "pinModeBtn",
     "mapStatus",
     "editorPanel",
@@ -401,6 +403,8 @@ function bindEvents() {
     selectPlace(item.dataset.placeId, true);
   });
 
+  els.placeDetailContent.addEventListener("click", handlePlaceDetailAction);
+
   els.geoResults.addEventListener("click", (event) => {
     const result = event.target.closest("[data-lat]");
     if (!result) return;
@@ -577,6 +581,7 @@ function render() {
   renderRecommendations();
   renderList(filtered);
   renderMarkers(filtered);
+  renderPlaceDetail();
   refreshIcons();
 }
 
@@ -899,6 +904,127 @@ function createPopup(place) {
   `;
 }
 
+function renderPlaceDetail() {
+  const place = selectedId ? getPlace(selectedId) : null;
+  if (!place) {
+    els.placeDetailMeta.textContent = "Chọn quán";
+    els.placeDetailContent.innerHTML = `
+      <div class="place-detail-empty">
+        <i data-lucide="mouse-pointer-2"></i>
+        <span>Chọn một quán trong danh sách hoặc trên bản đồ để xem chi tiết.</span>
+      </div>
+    `;
+    return;
+  }
+
+  const type = getType(place.type);
+  const status = getOpeningStatus(place);
+  const distance = formatDistance(getDistanceFromUser(place));
+  const photo = place.images[0]?.dataUrl || "";
+  const recentVisits = place.visits.slice(0, 3);
+  const lastVisit = recentVisits[0]?.date || place.lastVisit || "";
+  const tags = place.tags.slice(0, 5).map((tag) => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join("");
+  els.placeDetailMeta.textContent = `${Math.round(getFitScore(place))} điểm`;
+  const meta = [
+    `<span class="type-badge" style="background:${escapeAttr(type.color)}"><i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(type.label)}</span>`,
+    `<span class="price-badge">${formatPrice(place.priceLevel)}</span>`,
+    distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : "",
+    status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : "",
+    place.favorite ? '<span class="price-badge">Quán ruột</span>' : "",
+  ].filter(Boolean).join("");
+
+  els.placeDetailContent.innerHTML = `
+    <div class="place-detail-layout">
+      <div class="place-detail-media">
+        ${photo
+          ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(place.name)}" />`
+          : `<div class="place-detail-placeholder" style="--detail-color:${escapeAttr(type.color)}"><i data-lucide="${escapeAttr(type.icon)}"></i></div>`}
+      </div>
+      <div class="place-detail-main">
+        <div class="place-detail-title">
+          <div>
+            <h3>${escapeHtml(place.name)}</h3>
+            <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
+          </div>
+          <span class="score-badge">${Math.round(getFitScore(place))}</span>
+        </div>
+        <div class="place-meta">${meta}</div>
+        ${tags ? `<div class="place-meta">${tags}</div>` : ""}
+        <div class="place-detail-actions">
+          <button class="ghost-button" type="button" data-detail-action="open-maps" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="map"></i>
+            <span>Google Maps</span>
+          </button>
+          <button class="ghost-button" type="button" data-detail-action="directions" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="route"></i>
+            <span>Chỉ đường</span>
+          </button>
+          <button class="ghost-button" type="button" data-detail-action="visit" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="calendar-check"></i>
+            <span>Đã ghé</span>
+          </button>
+          <button class="ghost-button" type="button" data-detail-action="edit" data-id="${escapeAttr(place.id)}">
+            <i data-lucide="pencil"></i>
+            <span>Sửa</span>
+          </button>
+        </div>
+        ${place.notes ? `<p class="place-detail-note">${escapeHtml(place.notes)}</p>` : ""}
+        <div class="place-detail-visits">
+          <strong>${lastVisit ? `Ghé gần nhất: ${escapeHtml(formatDate(lastVisit))}` : "Chưa lưu lần ghé"}</strong>
+          ${recentVisits.length ? recentVisits.map((visit) => `
+            <span>${escapeHtml(formatDate(visit.date))} • ${visit.rating}/5${visit.note ? ` · ${escapeHtml(visit.note)}` : ""}</span>
+          `).join("") : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function handlePlaceDetailAction(event) {
+  const button = event.target.closest("[data-detail-action]");
+  if (!button) return;
+
+  const place = getPlace(button.dataset.id);
+  if (!place) return;
+
+  switch (button.dataset.detailAction) {
+    case "open-maps":
+      openExternalMap(place, false);
+      break;
+    case "directions":
+      openExternalMap(place, true);
+      break;
+    case "visit":
+      markPlaceVisited(place.id);
+      break;
+    case "edit":
+      openEditor(place);
+      break;
+  }
+}
+
+function openExternalMap(place, directions) {
+  const url = directions ? getDirectionsUrl(place) : getGoogleMapsUrl(place);
+  window.open(url, "_blank", "noopener");
+}
+
+function getGoogleMapsUrl(place) {
+  const url = new URL("https://www.google.com/maps/search/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("query", `${place.lat},${place.lng}`);
+  return url.toString();
+}
+
+function getDirectionsUrl(place) {
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  if (userLocation) {
+    url.searchParams.set("origin", `${userLocation.lat},${userLocation.lng}`);
+  }
+  url.searchParams.set("destination", `${place.lat},${place.lng}`);
+  return url.toString();
+}
+
 function openEditor(place = null) {
   const hasDraft = Boolean(place);
   const isEdit = Boolean(place?.id);
@@ -1166,6 +1292,35 @@ function toggleFavorite(id) {
   savePlaces();
   render();
   showUndoStatus("Đã cập nhật quán ruột.");
+}
+
+function markPlaceVisited(id) {
+  const place = getPlace(id);
+  if (!place) return;
+
+  const today = todayStamp();
+  const alreadyMarkedToday = place.visits.some((visit) => visit.date === today);
+  if (alreadyMarkedToday) {
+    showStatus("Hôm nay đã ghi nhận quán này.");
+    return;
+  }
+
+  pushUndoSnapshot("đánh dấu đã ghé");
+  place.visits = normalizeVisits([
+    {
+      id: makeId(),
+      date: today,
+      rating: 4,
+      note: "Đánh dấu nhanh",
+    },
+    ...place.visits,
+  ]);
+  place.lastVisit = today;
+  place.updatedAt = Date.now();
+  selectedId = place.id;
+  savePlaces();
+  render();
+  showUndoStatus("Đã đánh dấu lần ghé hôm nay.");
 }
 
 function setFormCoordinates(lat, lng) {

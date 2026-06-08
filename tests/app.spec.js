@@ -7,6 +7,10 @@ test("app render", async ({ page }) => {
   await expect(page.locator(".list-panel")).toBeInViewport();
   await expect(page.locator(".place-item")).toHaveCount(5);
   await expect(page.locator(".place-div-marker")).toHaveCount(5);
+  await page.locator(".place-item").first().click();
+  await expect(page.locator(".place-detail-panel")).toContainText("Google Maps");
+  await expect(page.locator(".place-detail-panel")).toContainText("Chỉ đường");
+  await expect(page.locator(".place-detail-panel")).toContainText("Đã ghé");
 });
 
 test("import Google Maps link opens editor with coordinates", async ({ page }) => {
