@@ -192,6 +192,18 @@ input::placeholder {
   background: var(--surface-soft);
 }
 
+.update-button {
+  color: #fff;
+  background: var(--tomato);
+  border-color: var(--tomato);
+}
+
+.update-button:hover {
+  color: #fff;
+  background: #a63f2b;
+  border-color: #a63f2b;
+}
+
 .ghost-button.dark {
   color: #fff;
   background: rgba(17, 25, 22, 0.84);

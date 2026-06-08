@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_VERSION = "taste-map-v5";
+const CACHE_VERSION = "taste-map-v6";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const TILE_CACHE = `${CACHE_VERSION}:tiles`;
@@ -36,6 +36,12 @@ self.addEventListener("activate", (event) => {
       ))
       .then(() => self.clients.claim()),
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {

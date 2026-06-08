@@ -47,6 +47,8 @@ let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
 let pendingImports = [];
 let undoStack = [];
+let deferredInstallPrompt = null;
+let waitingServiceWorker = null;
 let pinMode = false;
 let statusTimer = null;
 
@@ -134,6 +136,7 @@ function init() {
   render();
   renderDataPanel();
   refreshIcons();
+  setupInstallPrompt();
   registerServiceWorker();
   handleSharedLaunch();
 }
@@ -147,6 +150,8 @@ function cacheElements() {
     "exportBtn",
     "importTrigger",
     "importFile",
+    "installAppBtn",
+    "updateAppBtn",
     "newPlaceBtn",
     "resetFiltersBtn",
     "typeFilters",
@@ -298,6 +303,8 @@ function bindEvents() {
   els.plainExportBtn.addEventListener("click", exportPlainBackup);
   els.importTrigger.addEventListener("click", () => els.importFile.click());
   els.importFile.addEventListener("change", importPlaces);
+  els.installAppBtn.addEventListener("click", installApp);
+  els.updateAppBtn.addEventListener("click", applyAppUpdate);
   els.dismissBackupReminderBtn.addEventListener("click", dismissBackupReminder);
   els.saveGistSettingsBtn.addEventListener("click", saveGistSettings);
   els.pushGistBtn.addEventListener("click", pushGistBackup);
@@ -2134,17 +2141,61 @@ function refreshIcons() {
   }
 }
 
+function setupInstallPrompt() {
+  const standalone = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (standalone) {
+    els.installAppBtn.classList.add("hidden");
+    return;
+  }
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    els.installAppBtn.classList.remove("hidden");
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    els.installAppBtn.classList.add("hidden");
+    showStatus("Đã cài Taste Map.");
+  });
+}
+
+async function installApp() {
+  if (!deferredInstallPrompt) {
+    showStatus("Trình duyệt chưa sẵn sàng cài app.", true);
+    return;
+  }
+
+  els.installAppBtn.disabled = true;
+  try {
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice.outcome === "accepted") {
+      els.installAppBtn.classList.add("hidden");
+      showStatus("Đang cài app.");
+    }
+    deferredInstallPrompt = null;
+  } finally {
+    els.installAppBtn.disabled = false;
+  }
+}
+
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").then((registration) => {
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        showAppUpdateReady(registration.waiting);
+      }
+
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         if (!worker) return;
         worker.addEventListener("statechange", () => {
           if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            showStatus("Có bản mới. Tải lại trang để cập nhật.");
+            showAppUpdateReady(worker);
           }
         });
       });
@@ -2152,6 +2203,32 @@ function registerServiceWorker() {
       console.warn("Không đăng ký được service worker:", error);
     });
   });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
+function showAppUpdateReady(worker) {
+  waitingServiceWorker = worker;
+  els.updateAppBtn.classList.remove("hidden");
+  refreshIcons();
+  showStatus("Có bản mới.", false, {
+    label: "Cập nhật",
+    onClick: applyAppUpdate,
+  });
+}
+
+function applyAppUpdate() {
+  if (!waitingServiceWorker) {
+    window.location.reload();
+    return;
+  }
+  els.updateAppBtn.disabled = true;
+  waitingServiceWorker.postMessage({ type: "SKIP_WAITING" });
 }
 
 function handleSharedLaunch() {

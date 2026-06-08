@@ -39,3 +39,5 @@ Có thể dán nhiều link, mỗi dòng một link; app sẽ tạo hàng chờ 
 ## PWA
 
 App có `manifest.json` và `sw.js`, nên có thể cài như ứng dụng khi chạy qua HTTP/HTTPS. Service worker cache app shell, thư viện bản đồ, icon và các tile bản đồ đã xem. Khi offline, dữ liệu quán đã lưu vẫn dùng được; tìm địa điểm mới qua OpenStreetMap cần có mạng.
+
+Khi trình duyệt hỗ trợ, nút `Cài app` sẽ hiện trên thanh công cụ. Khi service worker tải được bản mới, nút `Cập nhật` sẽ hiện để kích hoạt bản mới đúng lúc.
