@@ -1057,7 +1057,7 @@ svg {
 }
 
 .maps-import {
-  min-height: 86px;
+  min-height: 98px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: start;
@@ -1080,10 +1080,11 @@ svg {
 .maps-import textarea {
   width: 100%;
   min-width: 0;
-  height: 68px;
+  height: 80px;
   border: 0;
   outline: 0;
   resize: none;
+  line-height: 1.35;
   color: var(--ink);
   background: transparent;
 }
@@ -2422,4 +2423,30 @@ body.pin-mode #map {
   height: 12px;
   border-radius: 3px;
   vertical-align: middle;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
 }
