@@ -8,6 +8,7 @@ const THEME_KEY = "quan-quen-map:theme:v1";
 const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
 const BACKUP_REMINDER_DAYS = 7;
 const RECENT_RECOMMENDATION_DAYS = 14;
+const RANDOM_NEARBY_RADIUS = 3000;
 const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -204,6 +205,7 @@ function cacheElements() {
     "statsSummary",
     "statsContent",
     "pinModeBtn",
+    "randomNearbyBtn",
     "mapStatus",
     "editorPanel",
     "placeForm",
@@ -361,6 +363,7 @@ function bindEvents() {
   els.clearImportQueueBtn.addEventListener("click", clearPendingImports);
   els.importQueueList.addEventListener("click", handleImportQueueClick);
   els.pinModeBtn.addEventListener("click", () => setPinMode(!pinMode));
+  els.randomNearbyBtn.addEventListener("click", pickRandomNearby);
 
   els.typeFilters.addEventListener("click", (event) => {
     const button = event.target.closest("[data-type]");
@@ -1583,6 +1586,36 @@ function setPinMode(value) {
   els.pinModeBtn.setAttribute("aria-pressed", String(pinMode));
   document.body.classList.toggle("pin-mode", pinMode);
   if (pinMode) showStatus("Chọn một điểm trên bản đồ.");
+}
+
+function pickRandomNearby() {
+  if (!userLocation) {
+    showStatus("Bấm nút vị trí để random quán gần bạn.", true);
+    return;
+  }
+  const place = randomNearbyPlace();
+  if (!place) {
+    showStatus("Không tìm thấy quán phù hợp gần bạn.", true);
+    return;
+  }
+  selectPlace(place.id, true);
+  const distance = formatDistance(getDistanceFromUser(place));
+  showStatus(`Gợi ý gần bạn: ${place.name}${distance ? ` · ${distance}` : ""}.`);
+}
+
+function randomNearbyPlace(radiusMeters = RANDOM_NEARBY_RADIUS) {
+  if (!userLocation) return null;
+  const withDistance = getFilteredPlaces()
+    .map((place) => ({ place, distance: getDistanceFromUser(place) }))
+    .filter((item) => Number.isFinite(item.distance));
+  if (withDistance.length === 0) return null;
+
+  const within = withDistance.filter((item) => item.distance <= radiusMeters);
+  const candidates = within.length
+    ? within
+    : withDistance.sort((a, b) => a.distance - b.distance).slice(0, Math.min(5, withDistance.length));
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  return pick.place;
 }
 
 async function searchGeo() {

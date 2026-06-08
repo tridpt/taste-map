@@ -147,3 +147,22 @@ test("share payload includes place name and maps link", async ({ page }) => {
   expect(payload.text).toContain(payload.url);
   expect(payload.url).toContain("google.com/maps");
 });
+
+test("random nearby picks a place within radius", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    userLocation = { lat: 10.7769, lng: 106.7009 };
+    render();
+    const place = randomNearbyPlace(5000);
+    return place ? { name: place.name, distance: getDistanceFromUser(place) } : null;
+  });
+  expect(result).not.toBeNull();
+  expect(result.name).toBeTruthy();
+  expect(result.distance).toBeLessThanOrEqual(5000);
+});
+
+test("random nearby prompts to locate when position unknown", async ({ page }) => {
+  await page.goto("/");
+  await page.click("#randomNearbyBtn");
+  await expect(page.locator("#mapStatus")).toContainText("vị trí");
+});
