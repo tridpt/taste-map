@@ -50,4 +50,6 @@ npm run check
 npm test
 ```
 
-Playwright test kiểm tra app render, import Google Maps, backup mã hóa, undo và PWA manifest. GitHub Actions tự chạy các bước này khi push lên `main`.
+Playwright test kiểm tra app render, import Google Maps, backup mã hóa, undo và PWA manifest. `npm run check` cũng kiểm tra UTF-8 để tránh lưu nhầm mojibake.
+
+GitHub Actions tự chạy các bước này khi push lên `main`. Job `deploy-pages` chỉ chạy sau khi `checks` pass, nên Pages không deploy nếu JavaScript, manifest, encoding hoặc Playwright test bị lỗi. Trong Settings -> Pages, chọn source là `GitHub Actions` để dùng luồng deploy có kiểm tra này.
