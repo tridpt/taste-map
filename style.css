@@ -712,6 +712,17 @@ svg {
   font-weight: 700;
 }
 
+.tag-filter-shortcut {
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.tag-filter-shortcut:hover {
+  color: var(--teal);
+  background: #fff;
+  border-color: var(--teal);
+}
+
 .place-meta {
   display: flex;
   flex-wrap: wrap;

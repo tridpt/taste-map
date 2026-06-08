@@ -951,7 +951,11 @@ function renderPlaceDetail() {
   const photo = place.images[0]?.dataUrl || "";
   const recentVisits = place.visits.slice(0, 3);
   const lastVisit = recentVisits[0]?.date || place.lastVisit || "";
-  const tags = place.tags.slice(0, 5).map((tag) => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join("");
+  const tags = place.tags.slice(0, 5).map((tag) => `
+    <button class="tag-badge tag-filter-shortcut" type="button" data-detail-action="filter-tag" data-tag="${escapeAttr(tag)}">
+      ${escapeHtml(tag)}
+    </button>
+  `).join("");
   els.placeDetailMeta.textContent = `${Math.round(getFitScore(place))} điểm`;
   const meta = [
     `<span class="type-badge" style="background:${escapeAttr(type.color)}"><i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(type.label)}</span>`,
@@ -1012,6 +1016,11 @@ function handlePlaceDetailAction(event) {
   const button = event.target.closest("[data-detail-action]");
   if (!button) return;
 
+  if (button.dataset.detailAction === "filter-tag") {
+    filterByDetailTag(button.dataset.tag);
+    return;
+  }
+
   const place = getPlace(button.dataset.id);
   if (!place) return;
 
@@ -1029,6 +1038,15 @@ function handlePlaceDetailAction(event) {
       openEditor(place);
       break;
   }
+}
+
+function filterByDetailTag(tag) {
+  if (!tag) return;
+  activeTags.add(tag);
+  setSidebarCollapsed(false);
+  syncFilterButtons();
+  render();
+  showStatus(`Đã lọc theo tag "${tag}".`);
 }
 
 function openExternalMap(place, directions) {

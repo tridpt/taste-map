@@ -11,6 +11,9 @@ test("app render", async ({ page }) => {
   await expect(page.locator(".place-detail-panel")).toContainText("Google Maps");
   await expect(page.locator(".place-detail-panel")).toContainText("Chỉ đường");
   await expect(page.locator(".place-detail-panel")).toContainText("Đã ghé");
+  await page.locator(".place-detail-panel [data-detail-action='filter-tag'][data-tag='wifi mạnh']").click();
+  await expect(page.locator("#tagFilters [data-tag='wifi mạnh']")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".place-item")).toHaveCount(1);
 
   await page.click("#sidebarToggleBtn");
   await expect(page.locator("#workspace")).toHaveClass(/sidebar-collapsed/);
