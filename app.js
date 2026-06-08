@@ -40,6 +40,7 @@ const DAY_OPTIONS = [
 const els = {};
 let map;
 let markers = new Map();
+let markerLayer = null;
 let userMarker = null;
 let userLocation = null;
 let places = [];
@@ -299,6 +300,16 @@ function initMap() {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
+
+  markerLayer = typeof L.markerClusterGroup === "function"
+    ? L.markerClusterGroup({
+        maxClusterRadius: 50,
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        chunkedLoading: true,
+      })
+    : L.layerGroup();
+  markerLayer.addTo(map);
 
   map.on("click", (event) => {
     if (!pinMode && !isEditorOpen()) return;
@@ -807,12 +818,12 @@ function renderList(filtered) {
 }
 
 function renderMarkers(filtered) {
-  if (!map) return;
+  if (!map || !markerLayer) return;
 
   const visibleIds = new Set(filtered.map((place) => place.id));
   markers.forEach((marker, id) => {
     if (!visibleIds.has(id)) {
-      marker.remove();
+      markerLayer.removeLayer(marker);
       markers.delete(id);
     }
   });
@@ -821,9 +832,10 @@ function renderMarkers(filtered) {
     let marker = markers.get(place.id);
     const icon = createMarkerIcon(place, place.id === selectedId);
     if (!marker) {
-      marker = L.marker([place.lat, place.lng], { icon }).addTo(map);
+      marker = L.marker([place.lat, place.lng], { icon });
       marker.on("click", () => selectPlace(place.id, false));
       markers.set(place.id, marker);
+      markerLayer.addLayer(marker);
     } else {
       marker.setLatLng([place.lat, place.lng]);
       marker.setIcon(icon);
@@ -1504,8 +1516,16 @@ function selectPlace(id, panTo) {
   selectedId = id;
   render();
   const marker = markers.get(id);
-  if (panTo) map?.setView([place.lat, place.lng], Math.max(map.getZoom(), 15));
-  marker?.openPopup();
+  if (panTo) {
+    if (marker && markerLayer && typeof markerLayer.zoomToShowLayer === "function") {
+      markerLayer.zoomToShowLayer(marker, () => marker.openPopup());
+    } else {
+      map?.setView([place.lat, place.lng], Math.max(map.getZoom(), 15));
+      marker?.openPopup();
+    }
+  } else {
+    marker?.openPopup();
+  }
 }
 
 function toggleFavorite(id) {

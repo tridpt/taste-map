@@ -1901,3 +1901,22 @@ body.pin-mode #map {
   color: var(--muted);
   font-size: 11px;
 }
+
+.marker-cluster {
+  background: rgba(23, 107, 104, 0.22);
+}
+
+.marker-cluster div {
+  background: var(--teal);
+  color: #fff;
+  font-weight: 800;
+}
+
+:root[data-theme="dark"] .marker-cluster {
+  background: rgba(47, 157, 151, 0.28);
+}
+
+:root[data-theme="dark"] .marker-cluster div {
+  background: var(--teal);
+  color: #07110f;
+}
