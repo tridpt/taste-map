@@ -511,6 +511,38 @@ svg {
   gap: 7px;
 }
 
+.data-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.data-status-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.data-status-item span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.data-status-item strong {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .data-actions .ghost-button {
   min-height: 34px;
   padding: 0 10px;

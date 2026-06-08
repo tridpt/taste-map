@@ -126,6 +126,24 @@
             <span>Nên xuất backup định kỳ.</span>
             <button id="dismissBackupReminderBtn" class="text-button" type="button">Nhắc sau</button>
           </div>
+          <div class="data-status-grid">
+            <div class="data-status-item">
+              <span>Số quán</span>
+              <strong id="dataPlaceCount">0</strong>
+            </div>
+            <div class="data-status-item">
+              <span>Backup gần nhất</span>
+              <strong id="dataBackupAt">Chưa có</strong>
+            </div>
+            <div class="data-status-item">
+              <span>Gist sync</span>
+              <strong id="dataGistStatus">Chưa cấu hình</strong>
+            </div>
+            <div class="data-status-item">
+              <span>LocalStorage</span>
+              <strong id="dataStorageUsage">0 KB</strong>
+            </div>
+          </div>
           <div class="data-actions">
             <button id="encryptedExportBtn" class="ghost-button" type="button">
               <i data-lucide="lock-keyhole"></i>

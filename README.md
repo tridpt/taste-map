@@ -41,3 +41,13 @@ Có thể dán nhiều link, mỗi dòng một link; app sẽ tạo hàng chờ 
 App có `manifest.json` và `sw.js`, nên có thể cài như ứng dụng khi chạy qua HTTP/HTTPS. Service worker cache app shell, thư viện bản đồ, icon và các tile bản đồ đã xem. Khi offline, dữ liệu quán đã lưu vẫn dùng được; tìm địa điểm mới qua OpenStreetMap cần có mạng.
 
 Khi trình duyệt hỗ trợ, nút `Cài app` sẽ hiện trên thanh công cụ. Khi service worker tải được bản mới, nút `Cập nhật` sẽ hiện để kích hoạt bản mới đúng lúc.
+
+## Kiểm tra
+
+```powershell
+npm install
+npm run check
+npm test
+```
+
+Playwright test kiểm tra app render, import Google Maps, backup mã hóa, undo và PWA manifest. GitHub Actions tự chạy các bước này khi push lên `main`.

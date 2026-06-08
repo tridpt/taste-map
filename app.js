@@ -162,6 +162,10 @@ function cacheElements() {
     "recommendationList",
     "backupStatus",
     "backupReminder",
+    "dataPlaceCount",
+    "dataBackupAt",
+    "dataGistStatus",
+    "dataStorageUsage",
     "dismissBackupReminderBtn",
     "encryptedExportBtn",
     "plainExportBtn",
@@ -1921,12 +1925,15 @@ function renderDataPanel() {
   if (!els.backupStatus) return;
   const meta = getBackupMeta();
   const lastExport = meta.lastExportAt ? new Date(meta.lastExportAt) : null;
+  const settings = getGistSettings();
   els.backupStatus.textContent = lastExport
     ? `Backup ${formatRelativeDays(lastExport)}`
     : "Chưa backup";
   els.backupReminder.classList.toggle("hidden", !shouldShowBackupReminder(meta));
-
-  const settings = getGistSettings();
+  els.dataPlaceCount.textContent = String(places.length);
+  els.dataBackupAt.textContent = lastExport ? formatRelativeDays(lastExport) : "Chưa có";
+  els.dataGistStatus.textContent = getGistStatusLabel(settings);
+  els.dataStorageUsage.textContent = formatBytes(getAppStorageBytes());
   if (document.activeElement !== els.gistToken) els.gistToken.value = settings.token || "";
   if (document.activeElement !== els.gistId) els.gistId.value = settings.gistId || "";
 }
@@ -1953,6 +1960,35 @@ function getGistSettings() {
   } catch {
     return {};
   }
+}
+
+function getGistStatusLabel(settings) {
+  if (!settings.token && !settings.gistId) return "Chưa cấu hình";
+  if (!settings.gistId) return "Chưa tạo Gist";
+  if (!settings.lastSyncAt) return "Đã cấu hình";
+  const direction = settings.lastSyncDirection === "pull" ? "Kéo về" : "Đẩy lên";
+  return `${direction} ${formatRelativeDays(new Date(settings.lastSyncAt))}`;
+}
+
+function getAppStorageBytes() {
+  let total = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith("quan-quen-map:")) continue;
+    total += byteLength(key);
+    total += byteLength(localStorage.getItem(key) || "");
+  }
+  return total;
+}
+
+function byteLength(value) {
+  return new Blob([String(value)]).size;
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
 function saveGistSettings() {
@@ -1994,7 +2030,7 @@ async function pushGistBackup() {
     if (!res.ok) throw new Error("Gist push failed");
     const data = await res.json();
     els.gistId.value = data.id;
-    localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify({ token: settings.token, gistId: data.id }));
+    saveGistSyncState({ token: settings.token, gistId: data.id }, "push");
     markBackupExported();
     showStatus("Đã đồng bộ lên GitHub Gist.");
   } catch {
@@ -2025,7 +2061,9 @@ async function pullGistBackup() {
     if (!Array.isArray(imported)) throw new Error("Invalid backup");
     const normalized = imported.map(normalizePlace).filter(isValidPlace);
     if (normalized.length === 0) throw new Error("No valid places");
-    replaceAllPlaces(normalized, `Kéo ${normalized.length} quán từ Gist và thay dữ liệu hiện tại?`, "Đã kéo dữ liệu từ Gist.");
+    if (replaceAllPlaces(normalized, `Kéo ${normalized.length} quán từ Gist và thay dữ liệu hiện tại?`, "Đã kéo dữ liệu từ Gist.")) {
+      saveGistSyncState(settings, "pull");
+    }
   } catch {
     showStatus("Không kéo được dữ liệu từ Gist.", true);
   } finally {
@@ -2040,6 +2078,15 @@ function readGistSettingsFromInputs() {
   };
   localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify(settings));
   return settings;
+}
+
+function saveGistSyncState(settings, direction) {
+  localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify({
+    ...settings,
+    lastSyncAt: new Date().toISOString(),
+    lastSyncDirection: direction,
+  }));
+  renderDataPanel();
 }
 
 function getGistHeaders(token) {
