@@ -11,6 +11,13 @@ test("app render", async ({ page }) => {
   await expect(page.locator(".place-detail-panel")).toContainText("Google Maps");
   await expect(page.locator(".place-detail-panel")).toContainText("Chỉ đường");
   await expect(page.locator(".place-detail-panel")).toContainText("Đã ghé");
+
+  await page.click("#sidebarToggleBtn");
+  await expect(page.locator("#workspace")).toHaveClass(/sidebar-collapsed/);
+  await expect(page.locator("#sidebarToggleBtn")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".sidebar")).toHaveCSS("visibility", "hidden");
+  await page.click("#sidebarToggleBtn");
+  await expect(page.locator("#workspace")).not.toHaveClass(/sidebar-collapsed/);
 });
 
 test("import Google Maps link opens editor with coordinates", async ({ page }) => {

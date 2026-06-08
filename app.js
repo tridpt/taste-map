@@ -3,6 +3,7 @@
 const STORAGE_KEY = "quan-quen-map:places:v1";
 const BACKUP_META_KEY = "quan-quen-map:backup-meta:v1";
 const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
+const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
 const BACKUP_REMINDER_DAYS = 7;
 const GIST_FILENAME = "taste-map-backup.json";
 const DEFAULT_CENTER = [10.7769, 106.7009];
@@ -129,6 +130,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   cacheElements();
+  setSidebarCollapsed(loadSidebarCollapsed(), { persist: false, refresh: false });
   hydrateStaticControls();
   places = loadPlaces();
   initMap();
@@ -144,6 +146,7 @@ function init() {
 function cacheElements() {
   [
     "workspace",
+    "sidebarToggleBtn",
     "placeCount",
     "globalSearch",
     "locateBtn",
@@ -295,6 +298,7 @@ function initMap() {
 }
 
 function bindEvents() {
+  els.sidebarToggleBtn.addEventListener("click", toggleSidebar);
   els.globalSearch.addEventListener("input", render);
   els.sortMode.addEventListener("change", render);
   els.suggestMood.addEventListener("change", renderRecommendations);
@@ -464,6 +468,30 @@ function bindEvents() {
       else if (isEditorOpen()) closeEditor();
     }
   });
+}
+
+function loadSidebarCollapsed() {
+  return localStorage.getItem(SIDEBAR_STATE_KEY) === "collapsed";
+}
+
+function toggleSidebar() {
+  setSidebarCollapsed(!els.workspace.classList.contains("sidebar-collapsed"));
+}
+
+function setSidebarCollapsed(collapsed, { persist = true, refresh = true } = {}) {
+  els.workspace.classList.toggle("sidebar-collapsed", collapsed);
+  els.sidebarToggleBtn.setAttribute("aria-pressed", String(collapsed));
+  const label = collapsed ? "Mở thanh bên" : "Thu gọn thanh bên";
+  const icon = collapsed ? "panel-left-open" : "panel-left-close";
+  els.sidebarToggleBtn.title = label;
+  els.sidebarToggleBtn.setAttribute("aria-label", label);
+  els.sidebarToggleBtn.innerHTML = `<i data-lucide="${icon}"></i>`;
+
+  if (persist) {
+    localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? "collapsed" : "expanded");
+  }
+  if (refresh) refreshIcons();
+  setTimeout(() => map?.invalidateSize(), 190);
 }
 
 function loadPlaces() {
