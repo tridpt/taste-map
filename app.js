@@ -3945,7 +3945,7 @@ function clamp(value, min, max) {
 function daysSince(dateString) {
   const time = new Date(dateString).getTime();
   if (!Number.isFinite(time)) return 999;
-  return Math.max(0, (Date.now() - time) / 86400000);
+  return Math.max(0, Math.floor((Date.now() - time) / 86400000));
 }
 
 function formatDate(dateString) {
