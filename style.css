@@ -2454,3 +2454,29 @@ body.pin-mode #map {
 .storage-warning {
   color: var(--tomato);
 }
+
+.discover-div-marker {
+  background: transparent;
+  border: 0;
+}
+
+.discover-pin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  background: var(--mustard);
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.discover-pin i,
+.discover-pin svg {
+  transform: rotate(45deg);
+  width: 16px;
+  height: 16px;
+}

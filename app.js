@@ -85,6 +85,7 @@ let typeManagerOpen = false;
 let lastFocusedBeforeEditor = null;
 let heatLayer = null;
 let heatmapMode = false;
+let discoverMarker = null;
 const imageCache = new Map();
 const persistedImageIds = new Set();
 let imageDbPromise = null;
@@ -2297,24 +2298,139 @@ function setPinMode(value) {
   if (pinMode) showStatus("Chọn một điểm trên bản đồ.");
 }
 
-function pickRandomNearby() {
+async function pickRandomNearby() {
+  const center = userLocation || (map && map.getCenter());
+  if (!center) {
+    showStatus("Chưa có vị trí để tìm quán gần.", true);
+    return;
+  }
+
+  showStatus("Đang tìm quán gần bạn...");
+  try {
+    const pois = await fetchNearbyPois(center.lat, center.lng, RANDOM_NEARBY_RADIUS);
+    const fresh = pois.filter((poi) => !isPoiAlreadySaved(poi));
+    const pool = fresh.length ? fresh : pois;
+    if (pool.length) {
+      showDiscoveredPlace(pool[Math.floor(Math.random() * pool.length)]);
+      return;
+    }
+    showStatus("Không tìm thấy quán mới gần đây, thử quán đã lưu.");
+  } catch {
+    showStatus("Không tải được quán gần (mạng?). Dùng danh sách đã lưu.", true);
+  }
+  fallbackRandomSaved();
+}
+
+function fallbackRandomSaved() {
   const pool = getFilteredPlaces();
   if (pool.length === 0) {
-    showStatus("Không tìm thấy quán phù hợp với bộ lọc.", true);
+    showStatus("Chưa có quán nào để gợi ý.", true);
     return;
   }
-
-  if (userLocation) {
-    const place = randomNearbyPlace() || pool[Math.floor(Math.random() * pool.length)];
-    selectPlace(place.id, true);
-    const distance = formatDistance(getDistanceFromUser(place));
-    showStatus(`Gợi ý gần bạn: ${place.name}${distance ? ` · ${distance}` : ""}.`);
-    return;
-  }
-
-  const place = pool[Math.floor(Math.random() * pool.length)];
+  const place = (userLocation && randomNearbyPlace()) || pool[Math.floor(Math.random() * pool.length)];
   selectPlace(place.id, true);
-  showStatus(`Chọn ngẫu nhiên: ${place.name}. Bấm nút vị trí để ưu tiên quán gần bạn.`);
+  const distance = formatDistance(getDistanceFromUser(place));
+  showStatus(`Gợi ý từ danh sách: ${place.name}${distance ? ` · ${distance}` : ""}.`);
+}
+
+async function fetchNearbyPois(lat, lng, radius) {
+  const query = `[out:json][timeout:20];(node["amenity"~"cafe|restaurant|fast_food|bar|pub|ice_cream|bakery"]["name"](around:${radius},${lat},${lng}););out 80;`;
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `data=${encodeURIComponent(query)}`,
+  });
+  if (!res.ok) throw new Error("overpass failed");
+  return parseOverpassPois(await res.json());
+}
+
+function parseOverpassPois(data) {
+  return (data?.elements || []).filter((el) => Number.isFinite(el.lat) && Number.isFinite(el.lon) && el.tags?.name);
+}
+
+function isPoiAlreadySaved(poi) {
+  return places.some((place) => haversineMeters(place.lat, place.lng, poi.lat, poi.lon) < 40);
+}
+
+function guessTypeFromTags(tags = {}) {
+  const amenity = String(tags.amenity || "");
+  const cuisine = normalizeText(tags.cuisine || "");
+  if (amenity === "cafe") return "cafe";
+  if (amenity === "bar" || amenity === "pub") return "drink";
+  if (amenity === "ice_cream" || amenity === "bakery" || cuisine.includes("dessert") || cuisine.includes("cake")) return "sweet";
+  if (amenity === "restaurant" || amenity === "fast_food") return "food";
+  return "food";
+}
+
+function poiAddress(tags = {}) {
+  return [tags["addr:housenumber"], tags["addr:street"], tags["addr:suburb"], tags["addr:city"]]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function poiToDraft(poi) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    id: "",
+    name: poi.tags.name,
+    type: guessTypeFromTags(poi.tags),
+    address: poiAddress(poi.tags),
+    lat: poi.lat,
+    lng: poi.lon,
+    priceLevel: 2,
+    ratings: { taste: 3, quiet: 3, power: 3, date: 3, work: 3 },
+    tags: [],
+    notes: "Gợi ý từ bản đồ",
+    lastVisit: today,
+    favorite: false,
+    images: [],
+    openingHours: { days: DAY_OPTIONS.map((day) => day.key), open: "", close: "" },
+    visits: [],
+  };
+}
+
+function showDiscoveredPlace(poi) {
+  const draft = poiToDraft(poi);
+  if (discoverMarker) {
+    discoverMarker.remove();
+    discoverMarker = null;
+  }
+  if (map) {
+    map.setView([poi.lat, poi.lon], Math.max(map.getZoom(), 16));
+    discoverMarker = L.marker([poi.lat, poi.lon], { icon: createDiscoverIcon() }).addTo(map);
+    const distance = formatDistance(getDistanceFromUser({ lat: poi.lat, lng: poi.lon }));
+    discoverMarker.bindPopup(`
+      <div class="place-popup">
+        <h3>${escapeHtml(draft.name)}</h3>
+        <p>${escapeHtml(draft.address || "Quán gần bạn")}</p>
+        <div class="place-popup-row">
+          <span class="type-badge" style="background:${escapeAttr(getType(draft.type).color)}">${escapeHtml(typeLabel(getType(draft.type)))}</span>
+          ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
+        </div>
+      </div>
+    `).openPopup();
+    refreshIcons();
+  }
+  showStatus(`Khám phá: ${draft.name}`, false, {
+    label: "Lưu quán",
+    onClick: () => {
+      if (discoverMarker) {
+        discoverMarker.remove();
+        discoverMarker = null;
+      }
+      openEditor(draft);
+    },
+  });
+}
+
+function createDiscoverIcon() {
+  return L.divIcon({
+    className: "discover-div-marker",
+    html: '<span class="discover-pin"><i data-lucide="sparkles"></i></span>',
+    iconSize: [34, 42],
+    iconAnchor: [17, 38],
+    popupAnchor: [0, -36],
+  });
 }
 
 function randomNearbyPlace(radiusMeters = RANDOM_NEARBY_RADIUS) {

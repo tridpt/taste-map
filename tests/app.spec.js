@@ -161,10 +161,35 @@ test("random nearby picks a place within radius", async ({ page }) => {
   expect(result.distance).toBeLessThanOrEqual(5000);
 });
 
-test("random nearby prompts to locate when position unknown", async ({ page }) => {
+test("nearby discovery helpers parse pois and build a draft", async ({ page }) => {
   await page.goto("/");
-  await page.click("#randomNearbyBtn");
-  await expect(page.locator("#mapStatus")).toContainText("vị trí");
+  const res = await page.evaluate(() => {
+    const data = {
+      elements: [
+        { lat: 10.78, lon: 106.70, tags: { name: "Cà phê A", amenity: "cafe" } },
+        { lat: 10.781, lon: 106.701, tags: { name: "Quán nhậu B", amenity: "bar" } },
+        { lat: 10.0, lon: 106.0, tags: { amenity: "restaurant" } },
+      ],
+    };
+    const pois = parseOverpassPois(data);
+    const draft = poiToDraft(pois[0]);
+    return {
+      count: pois.length,
+      cafeType: guessTypeFromTags({ amenity: "cafe" }),
+      barType: guessTypeFromTags({ amenity: "bar" }),
+      restaurantType: guessTypeFromTags({ amenity: "restaurant" }),
+      draftName: draft.name,
+      draftType: draft.type,
+      draftLat: draft.lat,
+    };
+  });
+  expect(res.count).toBe(2);
+  expect(res.cafeType).toBe("cafe");
+  expect(res.barType).toBe("drink");
+  expect(res.restaurantType).toBe("food");
+  expect(res.draftName).toBe("Cà phê A");
+  expect(res.draftType).toBe("cafe");
+  expect(res.draftLat).toBe(10.78);
 });
 
 async function setRange(page, selector, value) {

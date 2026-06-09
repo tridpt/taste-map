@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_VERSION = "taste-map-v27";
+const CACHE_VERSION = "taste-map-v28";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const TILE_CACHE = `${CACHE_VERSION}:tiles`;
@@ -61,6 +61,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.origin === "https://router.project-osrm.org") {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (url.origin === "https://overpass-api.de") {
     event.respondWith(fetch(request));
     return;
   }
