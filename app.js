@@ -2298,18 +2298,23 @@ function setPinMode(value) {
 }
 
 function pickRandomNearby() {
-  if (!userLocation) {
-    showStatus("Bấm nút vị trí để random quán gần bạn.", true);
+  const pool = getFilteredPlaces();
+  if (pool.length === 0) {
+    showStatus("Không tìm thấy quán phù hợp với bộ lọc.", true);
     return;
   }
-  const place = randomNearbyPlace();
-  if (!place) {
-    showStatus("Không tìm thấy quán phù hợp gần bạn.", true);
+
+  if (userLocation) {
+    const place = randomNearbyPlace() || pool[Math.floor(Math.random() * pool.length)];
+    selectPlace(place.id, true);
+    const distance = formatDistance(getDistanceFromUser(place));
+    showStatus(`Gợi ý gần bạn: ${place.name}${distance ? ` · ${distance}` : ""}.`);
     return;
   }
+
+  const place = pool[Math.floor(Math.random() * pool.length)];
   selectPlace(place.id, true);
-  const distance = formatDistance(getDistanceFromUser(place));
-  showStatus(`Gợi ý gần bạn: ${place.name}${distance ? ` · ${distance}` : ""}.`);
+  showStatus(`Chọn ngẫu nhiên: ${place.name}. Bấm nút vị trí để ưu tiên quán gần bạn.`);
 }
 
 function randomNearbyPlace(radiusMeters = RANDOM_NEARBY_RADIUS) {
