@@ -10,6 +10,7 @@ const IMAGE_DB_NAME = "quan-quen-map-images";
 const IMAGE_STORE = "images";
 const ITINERARIES_KEY = "quan-quen-map:itineraries:v1";
 const THEME_KEY = "quan-quen-map:theme:v1";
+const LANG_KEY = "quan-quen-map:lang:v1";
 const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
 const BACKUP_REMINDER_DAYS = 7;
 const RECENT_RECOMMENDATION_DAYS = 14;
@@ -88,6 +89,7 @@ const imageCache = new Map();
 const persistedImageIds = new Set();
 let imageDbPromise = null;
 let imageDbAvailable = true;
+let lang = "vi";
 let editorPhotos = [];
 let editorVisits = [];
 let editorOpeningDays = new Set(DAY_OPTIONS.map((day) => day.key));
@@ -176,6 +178,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   cacheElements();
+  applyStoredLang();
   applyStoredTheme();
   loadTypes();
   setSidebarCollapsed(loadSidebarCollapsed(), { persist: false, refresh: false });
@@ -203,6 +206,8 @@ function cacheElements() {
     "globalSearch",
     "locateBtn",
     "themeToggleBtn",
+    "langToggleBtn",
+    "langLabel",
     "exportBtn",
     "importTrigger",
     "importFile",
@@ -316,7 +321,7 @@ function hydrateStaticControls() {
     (type) => `
       <button class="segment-button" type="button" data-type="${escapeAttr(type.key)}" aria-pressed="true">
         <i data-lucide="${escapeAttr(type.icon)}"></i>
-        <span>${escapeHtml(type.label)}</span>
+        <span>${escapeHtml(typeLabel(type))}</span>
       </button>
     `,
   ).join("");
@@ -325,19 +330,19 @@ function hydrateStaticControls() {
     (purpose) => `
       <button class="chip-button" type="button" data-key="${escapeAttr(purpose.key)}" aria-pressed="false">
         <i data-lucide="${escapeAttr(purpose.icon)}"></i>
-        <span>${escapeHtml(purpose.label)}</span>
+        <span>${escapeHtml(purposeLabel(purpose.key))}</span>
       </button>
     `,
   ).join("");
 
   els.placeType.innerHTML = TYPES.map(
-    (type) => `<option value="${escapeAttr(type.key)}">${escapeHtml(type.label)}</option>`,
+    (type) => `<option value="${escapeAttr(type.key)}">${escapeHtml(typeLabel(type))}</option>`,
   ).join("");
 
   els.ratingFields.innerHTML = PURPOSES.map(
     (purpose) => `
       <div class="rating-row">
-        <label for="rating-${escapeAttr(purpose.key)}">${escapeHtml(purpose.label)}</label>
+        <label for="rating-${escapeAttr(purpose.key)}">${escapeHtml(purposeLabel(purpose.key))}</label>
         <input id="rating-${escapeAttr(purpose.key)}" data-rating="${escapeAttr(purpose.key)}" type="range" min="0" max="5" step="1" value="3" />
         <output for="rating-${escapeAttr(purpose.key)}">3</output>
       </div>
@@ -406,6 +411,7 @@ function bindEvents() {
   els.deletePlaceBtn.addEventListener("click", deleteCurrentPlace);
   els.locateBtn.addEventListener("click", locateUser);
   els.themeToggleBtn.addEventListener("click", toggleTheme);
+  els.langToggleBtn.addEventListener("click", toggleLang);
   els.openNowFilter.addEventListener("click", () => {
     openNowOnly = !openNowOnly;
     syncFilterButtons();
@@ -899,7 +905,7 @@ function isTimeValue(value) {
 
 function render() {
   const filtered = getFilteredPlaces();
-  els.placeCount.textContent = `${places.length} ${places.length === 1 ? "quán" : "quán"} đã lưu`;
+  els.placeCount.textContent = t("count.places", { n: places.length });
   els.filteredCount.textContent = String(filtered.length);
   renderTagFilters();
   renderTagManager();
@@ -1076,7 +1082,7 @@ function renderRecommendations() {
 
   els.recommendationList.innerHTML = recommended.map(({ place, score }) => {
     const distance = formatDistance(getDistanceFromUser(place));
-    const meta = [getType(place.type).label, distance, getOpeningStatus(place).label]
+    const meta = [typeLabel(getType(place.type)), distance, getOpeningStatus(place).label]
       .filter(Boolean)
       .join(" • ");
     return `
@@ -1221,7 +1227,7 @@ function renderList(filtered) {
           <div class="place-meta">
             <span class="type-badge" style="background:${escapeAttr(type.color)}">
               <i data-lucide="${escapeAttr(type.icon)}"></i>
-              ${escapeHtml(type.label)}
+              ${escapeHtml(typeLabel(type))}
             </span>
             <span class="price-badge">${formatPrice(place.priceLevel)}</span>
             ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
@@ -1520,7 +1526,7 @@ function createPopup(place) {
       <h3>${escapeHtml(place.name)}</h3>
       <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
       <div class="place-popup-row">
-        <span class="type-badge" style="background:${escapeAttr(type.color)}">${escapeHtml(type.label)}</span>
+        <span class="type-badge" style="background:${escapeAttr(type.color)}">${escapeHtml(typeLabel(type))}</span>
         <span class="price-badge">${formatPrice(place.priceLevel)}</span>
         ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
         ${status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : ""}
@@ -1533,7 +1539,7 @@ function createPopup(place) {
 function renderPlaceDetail() {
   const place = selectedId ? getPlace(selectedId) : null;
   if (!place) {
-    els.placeDetailMeta.textContent = "Chọn quán";
+    els.placeDetailMeta.textContent = t("detail.pick");
     els.placeDetailContent.innerHTML = `
       <div class="place-detail-empty">
         <i data-lucide="mouse-pointer-2"></i>
@@ -1556,7 +1562,7 @@ function renderPlaceDetail() {
   `).join("");
   els.placeDetailMeta.textContent = `${Math.round(getFitScore(place))} điểm`;
   const meta = [
-    `<span class="type-badge" style="background:${escapeAttr(type.color)}"><i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(type.label)}</span>`,
+    `<span class="type-badge" style="background:${escapeAttr(type.color)}"><i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(typeLabel(type))}</span>`,
     `<span class="price-badge">${formatPrice(place.priceLevel)}</span>`,
     distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : "",
     status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : "",
@@ -1758,6 +1764,63 @@ function applyStoredTheme() {
   applyTheme(loadTheme());
 }
 
+function t(key, params) {
+  const dict = (typeof I18N_STRINGS !== "undefined" && I18N_STRINGS[lang]) || {};
+  const fallback = (typeof I18N_STRINGS !== "undefined" && I18N_STRINGS.vi) || {};
+  let text = dict[key] != null ? dict[key] : (fallback[key] != null ? fallback[key] : key);
+  if (params) {
+    Object.keys(params).forEach((name) => {
+      text = text.replace(new RegExp(`\\{${name}\\}`, "g"), String(params[name]));
+    });
+  }
+  return text;
+}
+
+function loadLang() {
+  const stored = localStorage.getItem(LANG_KEY);
+  return stored === "en" ? "en" : "vi";
+}
+
+function applyStoredLang() {
+  lang = loadLang();
+  applyTranslations();
+}
+
+function applyTranslations() {
+  document.documentElement.setAttribute("lang", lang);
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    el.setAttribute("placeholder", t(el.getAttribute("data-i18n-placeholder")));
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    el.setAttribute("title", t(el.getAttribute("data-i18n-title")));
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+    el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria")));
+  });
+  if (els.langLabel) els.langLabel.textContent = lang === "en" ? "EN" : "VI";
+}
+
+function toggleLang() {
+  lang = lang === "en" ? "vi" : "en";
+  localStorage.setItem(LANG_KEY, lang);
+  applyTranslations();
+  hydrateStaticControls();
+  syncFilterButtons();
+  applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light");
+  render();
+}
+
+function typeLabel(type) {
+  if (!type) return "";
+  return type.custom ? type.label : t(`type.${type.key}`);
+}
+
+function purposeLabel(key) {
+  return t(`purpose.${key}`);
+}
 function loadTheme() {
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === "light" || stored === "dark") return stored;
@@ -1776,7 +1839,7 @@ function applyTheme(theme) {
   if (els.themeToggleBtn) {
     const isDark = next === "dark";
     els.themeToggleBtn.setAttribute("aria-pressed", String(isDark));
-    const label = isDark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối";
+    const label = isDark ? t("topbar.themeToLight") : t("topbar.themeToDark");
     els.themeToggleBtn.setAttribute("title", label);
     els.themeToggleBtn.setAttribute("aria-label", label);
     const icon = els.themeToggleBtn.querySelector("i");
@@ -2327,7 +2390,7 @@ function renderItinerary() {
   const stops = itinerary.map((id) => getPlace(id)).filter(Boolean);
   itinerary = stops.map((place) => place.id);
 
-  els.itineraryMeta.textContent = `${stops.length} quán`;
+  els.itineraryMeta.textContent = t("count.stops", { n: stops.length });
 
   let currentSection;
   if (stops.length === 0) {
@@ -3590,7 +3653,7 @@ function renderStats() {
       return `
         <div class="stat-type-row">
           <span class="type-badge" style="background:${escapeAttr(type.color)}">
-            <i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(type.label)}
+            <i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(typeLabel(type))}
           </span>
           <div class="stat-type-bar"><i style="--value:${(avg / 5) * 100}%"></i></div>
           <strong>${avg.toFixed(1)}</strong>

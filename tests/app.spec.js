@@ -458,3 +458,19 @@ test("images rehydrate from indexeddb after reload", async ({ page }) => {
     .poll(() => page.evaluate(() => Boolean(places.find((x) => x.id === "imgp")?.images?.[0]?.dataUrl)))
     .toBe(true);
 });
+
+test("language toggle switches static UI to english and persists", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#langLabel")).toHaveText("VI");
+  await expect(page.locator('[data-i18n="filters.title"]')).toHaveText("Bộ lọc");
+
+  await page.click("#langToggleBtn");
+  await expect(page.locator("#langLabel")).toHaveText("EN");
+  await expect(page.locator('[data-i18n="filters.title"]')).toHaveText("Filters");
+  await expect(page.locator("#newPlaceBtn span")).toHaveText("New place");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+
+  await page.reload();
+  await expect(page.locator("#langLabel")).toHaveText("EN");
+  await expect(page.locator('[data-i18n="filters.title"]')).toHaveText("Filters");
+});

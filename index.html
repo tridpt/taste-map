@@ -42,39 +42,42 @@
       </div>
 
       <div class="top-actions">
-        <button id="sidebarToggleBtn" class="icon-button sidebar-toggle" type="button" title="Thu gọn thanh bên" aria-label="Thu gọn thanh bên" aria-pressed="false">
+        <button id="sidebarToggleBtn" class="icon-button sidebar-toggle" type="button" data-i18n-title="topbar.collapse" data-i18n-aria="topbar.collapse" title="Thu gọn thanh bên" aria-label="Thu gọn thanh bên" aria-pressed="false">
           <i data-lucide="panel-left-close"></i>
         </button>
         <label class="search-box" for="globalSearch">
           <i data-lucide="search" aria-hidden="true"></i>
-          <input id="globalSearch" type="search" autocomplete="off" placeholder="Tìm theo tên, khu vực, ghi chú" />
+          <input id="globalSearch" type="search" autocomplete="off" data-i18n-placeholder="search.placeholder" placeholder="Tìm theo tên, khu vực, ghi chú" />
         </label>
-        <button id="locateBtn" class="icon-button" type="button" title="Vị trí của tôi" aria-label="Vị trí của tôi">
+        <button id="locateBtn" class="icon-button" type="button" data-i18n-title="topbar.locate" data-i18n-aria="topbar.locate" title="Vị trí của tôi" aria-label="Vị trí của tôi">
           <i data-lucide="navigation"></i>
         </button>
-        <button id="themeToggleBtn" class="icon-button" type="button" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối" aria-pressed="false">
+        <button id="themeToggleBtn" class="icon-button" type="button" data-i18n-title="topbar.theme" data-i18n-aria="topbar.theme" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối" aria-pressed="false">
           <i data-lucide="moon"></i>
+        </button>
+        <button id="langToggleBtn" class="icon-button" type="button" data-i18n-title="topbar.lang" data-i18n-aria="topbar.lang" title="Đổi ngôn ngữ" aria-label="Đổi ngôn ngữ">
+          <span id="langLabel">VI</span>
         </button>
         <button id="exportBtn" class="ghost-button" type="button">
           <i data-lucide="download"></i>
-          <span>Xuất</span>
+          <span data-i18n="btn.export">Xuất</span>
         </button>
         <button id="importTrigger" class="ghost-button" type="button">
           <i data-lucide="upload"></i>
-          <span>Nhập</span>
+          <span data-i18n="btn.import">Nhập</span>
         </button>
         <input id="importFile" type="file" accept="application/json,.json" hidden />
         <button id="installAppBtn" class="ghost-button hidden" type="button">
           <i data-lucide="download-cloud"></i>
-          <span>Cài app</span>
+          <span data-i18n="btn.install">Cài app</span>
         </button>
         <button id="updateAppBtn" class="ghost-button update-button hidden" type="button">
           <i data-lucide="refresh-cw"></i>
-          <span>Cập nhật</span>
+          <span data-i18n="btn.update">Cập nhật</span>
         </button>
         <button id="newPlaceBtn" class="primary-button" type="button">
           <i data-lucide="plus"></i>
-          <span>Quán mới</span>
+          <span data-i18n="btn.newPlace">Quán mới</span>
         </button>
       </div>
     </header>
@@ -83,88 +86,88 @@
       <aside class="sidebar" aria-label="Bộ lọc và danh sách quán">
         <section class="panel">
           <div class="panel-heading">
-            <h2>Bộ lọc</h2>
-            <button id="resetFiltersBtn" class="text-button" type="button">Đặt lại</button>
+            <h2 data-i18n="filters.title">Bộ lọc</h2>
+            <button id="resetFiltersBtn" class="text-button" type="button" data-i18n="filters.reset">Đặt lại</button>
           </div>
 
           <div class="field">
             <div class="field-head">
-              <label>Loại quán</label>
-              <button id="manageTypesBtn" class="text-button" type="button">Quản lý</button>
+              <label data-i18n="filters.type">Loại quán</label>
+              <button id="manageTypesBtn" class="text-button" type="button" data-i18n="filters.manage">Quản lý</button>
             </div>
             <div id="typeFilters" class="segmented" role="group" aria-label="Loại quán"></div>
             <div id="typeManager" class="tag-manager hidden">
               <div class="type-add-row">
-                <input id="newTypeName" type="text" maxlength="40" placeholder="Tên loại mới" />
-                <button id="addTypeBtn" class="ghost-button" type="button">Thêm</button>
+                <input id="newTypeName" type="text" maxlength="40" data-i18n-placeholder="filters.newTypeName" placeholder="Tên loại mới" />
+                <button id="addTypeBtn" class="ghost-button" type="button" data-i18n="filters.add">Thêm</button>
               </div>
               <div id="typeManagerList"></div>
             </div>
           </div>
 
           <div class="field">
-            <label>Gu hôm nay</label>
+            <label data-i18n="filters.purpose">Gu hôm nay</label>
             <div id="purposeFilters" class="chip-group" role="group" aria-label="Gu hôm nay"></div>
           </div>
 
           <div class="field">
             <div class="field-head">
-              <label>Tag quen</label>
-              <button id="manageTagsBtn" class="text-button" type="button">Quản lý</button>
+              <label data-i18n="filters.tag">Tag quen</label>
+              <button id="manageTagsBtn" class="text-button" type="button" data-i18n="filters.manage">Quản lý</button>
             </div>
             <div id="tagFilters" class="chip-group tag-filter-list" role="group" aria-label="Tag quen"></div>
             <div id="tagManager" class="tag-manager hidden"></div>
           </div>
 
           <div class="field">
-            <label>Khu vực</label>
+            <label data-i18n="filters.area">Khu vực</label>
             <div id="areaFilters" class="chip-group tag-filter-list" role="group" aria-label="Khu vực"></div>
           </div>
 
           <div class="field compact">
-            <label for="sortMode">Sắp xếp</label>
+            <label for="sortMode" data-i18n="filters.sort">Sắp xếp</label>
             <select id="sortMode">
-              <option value="fit">Hợp gu nhất</option>
-              <option value="distance">Gần tôi nhất</option>
-              <option value="recent">Mới cập nhật</option>
-              <option value="price">Giá thấp trước</option>
-              <option value="name">Tên A-Z</option>
+              <option value="fit" data-i18n="sort.fit">Hợp gu nhất</option>
+              <option value="distance" data-i18n="sort.distance">Gần tôi nhất</option>
+              <option value="recent" data-i18n="sort.recent">Mới cập nhật</option>
+              <option value="price" data-i18n="sort.price">Giá thấp trước</option>
+              <option value="name" data-i18n="sort.name">Tên A-Z</option>
             </select>
           </div>
 
           <div class="field compact">
-            <label>Khoảng giá <span id="priceRangeLabel" class="range-value">₫ – ₫₫₫₫</span></label>
+            <label><span data-i18n="filters.price">Khoảng giá</span> <span id="priceRangeLabel" class="range-value">₫ – ₫₫₫₫</span></label>
             <div class="range-row">
-              <span class="range-cap">Từ</span>
+              <span class="range-cap" data-i18n="filters.from">Từ</span>
               <input id="priceMin" type="range" min="1" max="4" step="1" value="1" aria-label="Giá tối thiểu" />
             </div>
             <div class="range-row">
-              <span class="range-cap">Đến</span>
+              <span class="range-cap" data-i18n="filters.to">Đến</span>
               <input id="priceMax" type="range" min="1" max="4" step="1" value="4" aria-label="Giá tối đa" />
             </div>
           </div>
 
           <div class="field compact">
-            <label for="distanceFilter">Bán kính <span id="distanceLabel" class="range-value">Tắt</span></label>
+            <label for="distanceFilter"><span data-i18n="filters.radius">Bán kính</span> <span id="distanceLabel" class="range-value">Tắt</span></label>
             <input id="distanceFilter" type="range" min="0" max="20" step="1" value="0" />
           </div>
 
           <div class="field compact">
-            <label>Trạng thái mở cửa</label>
+            <label data-i18n="filters.openStatus">Trạng thái mở cửa</label>
             <button id="openNowFilter" class="chip-button open-now-toggle" type="button" aria-pressed="false">
               <i data-lucide="clock"></i>
-              <span>Đang mở cửa</span>
+              <span data-i18n="filters.openNow">Đang mở cửa</span>
             </button>
             <div class="open-time-row">
               <select id="openFilterDay" aria-label="Ngày trong tuần">
-                <option value="">Hôm nay</option>
-                <option value="1">Thứ 2</option>
-                <option value="2">Thứ 3</option>
-                <option value="3">Thứ 4</option>
-                <option value="4">Thứ 5</option>
-                <option value="5">Thứ 6</option>
-                <option value="6">Thứ 7</option>
-                <option value="0">Chủ nhật</option>
+                <option value="" data-i18n="day.today">Hôm nay</option>
+                <option value="1" data-i18n="day.mon">Thứ 2</option>
+                <option value="2" data-i18n="day.tue">Thứ 3</option>
+                <option value="3" data-i18n="day.wed">Thứ 4</option>
+                <option value="4" data-i18n="day.thu">Thứ 5</option>
+                <option value="5" data-i18n="day.fri">Thứ 6</option>
+                <option value="6" data-i18n="day.sat">Thứ 7</option>
+                <option value="0" data-i18n="day.sun">Chủ nhật</option>
               </select>
               <input id="openFilterTime" type="time" aria-label="Giờ định đi" />
             </div>
@@ -173,24 +176,24 @@
 
         <section class="panel maps-import-panel">
           <div class="panel-heading">
-            <h2>Nhập từ Maps</h2>
+            <h2 data-i18n="maps.title">Nhập từ Maps</h2>
           </div>
           <label class="maps-import" for="mapsLinkInput">
             <i data-lucide="link" aria-hidden="true"></i>
-            <textarea id="mapsLinkInput" rows="3" autocomplete="off" placeholder="Dán link Google Maps..."></textarea>
-            <button id="mapsClipboardBtn" class="icon-button dark" type="button" title="Dán từ clipboard" aria-label="Dán từ clipboard">
+            <textarea id="mapsLinkInput" rows="3" autocomplete="off" data-i18n-placeholder="maps.placeholder" placeholder="Dán link Google Maps..."></textarea>
+            <button id="mapsClipboardBtn" class="icon-button dark" type="button" data-i18n-title="maps.paste" data-i18n-aria="maps.paste" title="Dán từ clipboard" aria-label="Dán từ clipboard">
               <i data-lucide="clipboard"></i>
             </button>
-            <button id="mapsImportBtn" class="icon-button dark" type="button" title="Nhập từ Google Maps" aria-label="Nhập từ Google Maps">
+            <button id="mapsImportBtn" class="icon-button dark" type="button" data-i18n-title="maps.import" data-i18n-aria="maps.import" title="Nhập từ Google Maps" aria-label="Nhập từ Google Maps">
               <i data-lucide="wand-sparkles"></i>
             </button>
           </label>
           <div id="importQueuePanel" class="import-queue hidden">
             <div class="import-queue-head">
-              <strong>Chờ xác nhận</strong>
+              <strong data-i18n="maps.queue">Chờ xác nhận</strong>
               <div>
-                <button id="saveImportQueueBtn" class="text-button" type="button">Lưu tất cả</button>
-                <button id="clearImportQueueBtn" class="text-button" type="button">Xóa</button>
+                <button id="saveImportQueueBtn" class="text-button" type="button" data-i18n="maps.saveAll">Lưu tất cả</button>
+                <button id="clearImportQueueBtn" class="text-button" type="button" data-i18n="maps.clear">Xóa</button>
               </div>
             </div>
             <div id="importQueueList" class="import-queue-list"></div>
@@ -199,13 +202,13 @@
 
         <section class="panel list-panel">
           <div class="panel-heading">
-            <h2>Quán đã lưu</h2>
+            <h2 data-i18n="list.title">Quán đã lưu</h2>
             <span id="filteredCount" class="meta-count">0</span>
           </div>
           <div id="placeList" class="place-list"></div>
           <div id="emptyState" class="empty-state hidden">
             <i data-lucide="map"></i>
-            <p>Chưa có quán phù hợp.</p>
+            <p data-i18n="list.empty">Chưa có quán phù hợp.</p>
           </div>
         </section>
       </aside>
@@ -216,8 +219,8 @@
             <div class="geo-search-wrap">
               <label class="geo-search" for="geoSearch">
                 <i data-lucide="map-pinned" aria-hidden="true"></i>
-                <input id="geoSearch" type="search" autocomplete="off" placeholder="Tìm địa điểm hoặc địa chỉ" />
-                <button id="geoSearchBtn" class="icon-button dark" type="button" title="Tìm vị trí" aria-label="Tìm vị trí">
+                <input id="geoSearch" type="search" autocomplete="off" data-i18n-placeholder="geo.placeholder" placeholder="Tìm địa điểm hoặc địa chỉ" />
+                <button id="geoSearchBtn" class="icon-button dark" type="button" data-i18n-title="geo.search" data-i18n-aria="geo.search" title="Tìm vị trí" aria-label="Tìm vị trí">
                   <i data-lucide="search"></i>
                 </button>
               </label>
@@ -225,15 +228,15 @@
             </div>
             <button id="pinModeBtn" class="ghost-button dark" type="button" aria-pressed="false">
               <i data-lucide="crosshair"></i>
-              <span>Ghim</span>
+              <span data-i18n="map.pin">Ghim</span>
             </button>
-            <button id="randomNearbyBtn" class="ghost-button dark" type="button" title="Gợi ý ngẫu nhiên quán gần bạn">
+            <button id="randomNearbyBtn" class="ghost-button dark" type="button" data-i18n-title="map.randomTitle" title="Gợi ý ngẫu nhiên quán gần bạn">
               <i data-lucide="dices"></i>
-              <span>Random gần tôi</span>
+              <span data-i18n="map.random">Random gần tôi</span>
             </button>
-            <button id="heatmapBtn" class="ghost-button dark" type="button" aria-pressed="false" title="Bản đồ nhiệt mật độ quán">
+            <button id="heatmapBtn" class="ghost-button dark" type="button" aria-pressed="false" data-i18n-title="map.heatmapTitle" title="Bản đồ nhiệt mật độ quán">
               <i data-lucide="flame"></i>
-              <span>Heatmap</span>
+              <span data-i18n="map.heatmap">Heatmap</span>
             </button>
           </div>
           <div id="map"></div>
@@ -243,31 +246,31 @@
         <section class="below-map-panels" aria-label="Gợi ý và dữ liệu">
           <section class="panel place-detail-panel">
             <div class="panel-heading">
-              <h2>Chi tiết quán</h2>
-              <span id="placeDetailMeta" class="meta-count">Chọn quán</span>
+              <h2 data-i18n="detail.title">Chi tiết quán</h2>
+              <span id="placeDetailMeta" class="meta-count" data-i18n="detail.pick">Chọn quán</span>
             </div>
             <div id="placeDetailContent" class="place-detail-content"></div>
           </section>
 
           <section class="panel recommendation-panel">
             <div class="panel-heading">
-              <h2>Hôm nay đi đâu?</h2>
+              <h2 data-i18n="rec.title">Hôm nay đi đâu?</h2>
               <button id="rerollRecommendationsBtn" class="text-button" type="button">
                 <i data-lucide="shuffle"></i>
-                <span>Random lại</span>
+                <span data-i18n="rec.reroll">Random lại</span>
               </button>
             </div>
             <div id="favoriteReminder" class="favorite-reminder hidden"></div>
             <div class="field compact">
-              <label for="suggestMood">Mood</label>
+              <label for="suggestMood" data-i18n="rec.mood">Mood</label>
               <select id="suggestMood">
-                <option value="work">Làm việc</option>
-                <option value="date">Đi date</option>
-                <option value="quiet">Yên tĩnh</option>
-                <option value="quick">Ăn nhanh</option>
-                <option value="taste">Ăn ngon</option>
-                <option value="nearby">Gần tôi</option>
-                <option value="new">Mới chưa thử</option>
+                <option value="work" data-i18n="mood.work">Làm việc</option>
+                <option value="date" data-i18n="mood.date">Đi date</option>
+                <option value="quiet" data-i18n="mood.quiet">Yên tĩnh</option>
+                <option value="quick" data-i18n="mood.quick">Ăn nhanh</option>
+                <option value="taste" data-i18n="mood.taste">Ăn ngon</option>
+                <option value="nearby" data-i18n="mood.nearby">Gần tôi</option>
+                <option value="new" data-i18n="mood.new">Mới chưa thử</option>
               </select>
             </div>
             <div id="recommendationList" class="recommendation-list"></div>
@@ -275,7 +278,7 @@
 
           <section class="panel itinerary-panel">
             <div class="panel-heading">
-              <h2>Lịch trình</h2>
+              <h2 data-i18n="itinerary.title">Lịch trình</h2>
               <span id="itineraryMeta" class="meta-count">0 quán</span>
             </div>
             <div id="itineraryContent" class="itinerary-content"></div>
@@ -283,88 +286,88 @@
 
           <section class="panel collections-panel">
             <div class="panel-heading">
-              <h2>Bộ sưu tập</h2>
-              <button id="newCollectionBtn" class="text-button" type="button">＋ Mới</button>
+              <h2 data-i18n="collections.title">Bộ sưu tập</h2>
+              <button id="newCollectionBtn" class="text-button" type="button" data-i18n="collections.new">＋ Mới</button>
             </div>
             <div id="collectionFilterList" class="collection-list"></div>
           </section>
 
           <section class="panel stats-panel">
             <div class="panel-heading">
-              <h2>Thống kê</h2>
-              <span id="statsSummary" class="meta-count">Chưa có lần ghé</span>
+              <h2 data-i18n="stats.title">Thống kê</h2>
+              <span id="statsSummary" class="meta-count" data-i18n="stats.noVisit">Chưa có lần ghé</span>
             </div>
             <div id="statsContent" class="stats-content"></div>
           </section>
 
           <section class="panel data-panel">
             <div class="panel-heading">
-              <h2>Dữ liệu</h2>
-              <span id="backupStatus" class="meta-count">Chưa backup</span>
+              <h2 data-i18n="data.title">Dữ liệu</h2>
+              <span id="backupStatus" class="meta-count" data-i18n="data.notBacked">Chưa backup</span>
             </div>
             <div id="backupReminder" class="backup-reminder hidden">
               <i data-lucide="archive"></i>
-              <span>Nên xuất backup định kỳ.</span>
-              <button id="dismissBackupReminderBtn" class="text-button" type="button">Nhắc sau</button>
+              <span data-i18n="data.remindBackup">Nên xuất backup định kỳ.</span>
+              <button id="dismissBackupReminderBtn" class="text-button" type="button" data-i18n="data.remindLater">Nhắc sau</button>
             </div>
             <div class="data-status-grid">
               <div class="data-status-item">
-                <span>Số quán</span>
+                <span data-i18n="data.placeCount">Số quán</span>
                 <strong id="dataPlaceCount">0</strong>
               </div>
               <div class="data-status-item">
-                <span>Backup gần nhất</span>
-                <strong id="dataBackupAt">Chưa có</strong>
+                <span data-i18n="data.lastBackup">Backup gần nhất</span>
+                <strong id="dataBackupAt" data-i18n="data.none">Chưa có</strong>
               </div>
               <div class="data-status-item">
-                <span>Gist sync</span>
-                <strong id="dataGistStatus">Chưa cấu hình</strong>
+                <span data-i18n="data.gistSync">Gist sync</span>
+                <strong id="dataGistStatus" data-i18n="data.notConfigured">Chưa cấu hình</strong>
               </div>
               <div class="data-status-item">
-                <span>LocalStorage</span>
+                <span data-i18n="data.localStorage">LocalStorage</span>
                 <strong id="dataStorageUsage">0 KB</strong>
               </div>
             </div>
             <div class="data-actions">
               <button id="encryptedExportBtn" class="ghost-button" type="button">
                 <i data-lucide="lock-keyhole"></i>
-                <span>Backup mã hóa</span>
+                <span data-i18n="data.encryptedBackup">Backup mã hóa</span>
               </button>
               <button id="plainExportBtn" class="ghost-button" type="button">
                 <i data-lucide="file-json"></i>
-                <span>JSON thường</span>
+                <span data-i18n="data.plainJson">JSON thường</span>
               </button>
               <button id="csvImportTrigger" class="ghost-button" type="button">
                 <i data-lucide="file-up"></i>
-                <span>Nhập CSV</span>
+                <span data-i18n="data.importCsv">Nhập CSV</span>
               </button>
               <button id="csvExportBtn" class="ghost-button" type="button">
                 <i data-lucide="file-down"></i>
-                <span>Xuất CSV</span>
+                <span data-i18n="data.exportCsv">Xuất CSV</span>
               </button>
               <input id="csvImportFile" type="file" accept=".csv,text/csv" hidden />
             </div>
             <div class="gist-sync">
               <div class="field">
-                <label for="gistToken">GitHub token</label>
-                <input id="gistToken" type="password" autocomplete="off" placeholder="token có quyền gist" />
+                <label for="gistToken" data-i18n="data.githubToken">GitHub token</label>
+                <input id="gistToken" type="password" autocomplete="off" data-i18n-placeholder="data.tokenPlaceholder" placeholder="token có quyền gist" />
               </div>
               <div class="field">
-                <label for="gistId">Gist ID</label>
-                <input id="gistId" type="text" autocomplete="off" placeholder="để trống để tạo gist mới" />
+                <label for="gistId" data-i18n="data.gistId">Gist ID</label>
+                <input id="gistId" type="text" autocomplete="off" data-i18n-placeholder="data.gistIdPlaceholder" placeholder="để trống để tạo gist mới" />
               </div>
               <div class="data-actions">
                 <button id="saveGistSettingsBtn" class="ghost-button" type="button">
                   <i data-lucide="save"></i>
-                  <span>Lưu cấu hình</span>
+                  <span data-i18n="data.saveConfig">Lưu cấu hình</span>
                 </button>
                 <button id="pushGistBtn" class="ghost-button" type="button">
                   <i data-lucide="cloud-upload"></i>
-                  <span>Đẩy lên</span>
+                  <span data-i18n="data.push">Đẩy lên</span>
                 </button>
                 <button id="pullGistBtn" class="ghost-button" type="button">
                   <i data-lucide="cloud-download"></i>
-                  <span>Kéo về</span>
+                  <span data-i18n="data.pull">Kéo về</span>
                 </button>
               </div>
             </div>
@@ -379,7 +382,7 @@
               <p id="editorMode" class="eyebrow">Quán mới</p>
               <h2 id="editorTitle">Lưu quán</h2>
             </div>
-            <button id="closeEditorBtn" class="icon-button" type="button" title="Đóng" aria-label="Đóng">
+            <button id="closeEditorBtn" class="icon-button" type="button" data-i18n-title="editor.close" data-i18n-aria="editor.close" title="Đóng" aria-label="Đóng">
               <i data-lucide="x">×</i>
             </button>
           </div>
@@ -387,17 +390,17 @@
           <input id="placeId" type="hidden" />
 
           <div class="field">
-            <label for="placeName">Tên quán</label>
+            <label for="placeName" data-i18n="editor.name">Tên quán</label>
             <input id="placeName" type="text" required maxlength="80" />
           </div>
 
           <div class="two-col">
             <div class="field">
-              <label for="placeType">Loại</label>
+              <label for="placeType" data-i18n="editor.type">Loại</label>
               <select id="placeType"></select>
             </div>
             <div class="field">
-              <label for="priceLevel">Giá</label>
+              <label for="priceLevel" data-i18n="editor.price">Giá</label>
               <select id="priceLevel">
                 <option value="1">₫</option>
                 <option value="2">₫₫</option>
@@ -408,40 +411,40 @@
           </div>
 
           <div class="field">
-            <label for="placeAddress">Địa chỉ / khu vực</label>
+            <label for="placeAddress" data-i18n="editor.address">Địa chỉ / khu vực</label>
             <input id="placeAddress" type="text" maxlength="160" />
           </div>
 
           <div class="two-col">
             <div class="field">
-              <label for="placeLat">Vĩ độ</label>
+              <label for="placeLat" data-i18n="editor.lat">Vĩ độ</label>
               <input id="placeLat" type="number" step="0.000001" required />
             </div>
             <div class="field">
-              <label for="placeLng">Kinh độ</label>
+              <label for="placeLng" data-i18n="editor.lng">Kinh độ</label>
               <input id="placeLng" type="number" step="0.000001" required />
             </div>
           </div>
 
           <div class="field">
-            <label for="lastVisit">Lần ghé gần nhất</label>
+            <label for="lastVisit" data-i18n="editor.lastVisit">Lần ghé gần nhất</label>
             <input id="lastVisit" type="date" />
           </div>
 
           <div id="ratingFields" class="rating-fields"></div>
 
           <div class="field">
-            <label>Ảnh quán</label>
+            <label data-i18n="editor.photos">Ảnh quán</label>
             <div class="photo-actions">
               <select id="photoCategory" aria-label="Album ảnh">
-                <option value="food">Món</option>
-                <option value="space">Không gian</option>
-                <option value="menu">Menu</option>
-                <option value="other">Khác</option>
+                <option value="food" data-i18n="album.food">Món</option>
+                <option value="space" data-i18n="album.space">Không gian</option>
+                <option value="menu" data-i18n="album.menu">Menu</option>
+                <option value="other" data-i18n="album.other">Khác</option>
               </select>
               <button id="addPhotoBtn" class="ghost-button" type="button">
                 <i data-lucide="image-plus"></i>
-                <span>Thêm ảnh</span>
+                <span data-i18n="editor.addPhoto">Thêm ảnh</span>
               </button>
               <input id="placePhotosInput" type="file" accept="image/*" multiple hidden />
             </div>
@@ -449,22 +452,22 @@
           </div>
 
           <div class="field">
-            <label>Giờ mở cửa</label>
+            <label data-i18n="editor.openingHours">Giờ mở cửa</label>
             <div id="openingDays" class="day-toggle-group"></div>
             <div class="two-col">
               <div class="field inner-field">
-                <label for="openingOpen">Mở</label>
+                <label for="openingOpen" data-i18n="editor.open">Mở</label>
                 <input id="openingOpen" type="time" />
               </div>
               <div class="field inner-field">
-                <label for="openingClose">Đóng</label>
+                <label for="openingClose" data-i18n="editor.close2">Đóng</label>
                 <input id="openingClose" type="time" />
               </div>
             </div>
           </div>
 
           <div class="field">
-            <label>Lịch sử ghé</label>
+            <label data-i18n="editor.visitHistory">Lịch sử ghé</label>
             <div class="visit-entry">
               <input id="visitDate" type="date" />
               <select id="visitRating">
@@ -478,17 +481,17 @@
                 <i data-lucide="plus"></i>
               </button>
             </div>
-            <input id="visitNote" type="text" maxlength="160" placeholder="Ghi chú lần ghé" />
+            <input id="visitNote" type="text" maxlength="160" data-i18n-placeholder="editor.visitNote" placeholder="Ghi chú lần ghé" />
             <div id="visitHistoryList" class="visit-history-list"></div>
           </div>
 
           <div class="field">
-            <label for="placeTags">Tag riêng</label>
-            <input id="placeTags" type="text" maxlength="120" placeholder="wifi mạnh, ngồi lâu, gửi xe dễ" />
+            <label for="placeTags" data-i18n="editor.ownTags">Tag riêng</label>
+            <input id="placeTags" type="text" maxlength="120" data-i18n-placeholder="editor.tagsPlaceholder" placeholder="wifi mạnh, ngồi lâu, gửi xe dễ" />
           </div>
 
           <div class="field">
-            <label for="placeNotes">Ghi chú</label>
+            <label for="placeNotes" data-i18n="editor.notes">Ghi chú</label>
             <textarea id="placeNotes" rows="4" maxlength="500"></textarea>
           </div>
 
@@ -497,17 +500,17 @@
               <input id="favoritePlace" type="checkbox" />
               <span></span>
             </label>
-            <span>Đánh dấu quán ruột</span>
+            <span data-i18n="editor.markFavorite">Đánh dấu quán ruột</span>
           </div>
 
           <div class="form-actions">
             <button id="deletePlaceBtn" class="danger-button hidden" type="button">
               <i data-lucide="trash-2"></i>
-              <span>Xóa</span>
+              <span data-i18n="editor.delete">Xóa</span>
             </button>
             <button class="primary-button" type="submit">
               <i data-lucide="save"></i>
-              <span>Lưu quán</span>
+              <span data-i18n="editor.save">Lưu quán</span>
             </button>
           </div>
         </form>
@@ -523,6 +526,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

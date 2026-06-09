@@ -6,7 +6,7 @@
     "serve": "http-server . -a 127.0.0.1 -p 5178 -c-1",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "check": "node scripts/check-encoding.js && node --check app.js && node --check sw.js && node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')\""
+    "check": "node scripts/check-encoding.js && node --check app.js && node --check i18n.js && node --check sw.js && node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')\""
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

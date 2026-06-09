@@ -1,6 +1,6 @@
 # Quán quen
 
-Web app tĩnh để lưu quán ăn/cafe theo gu cá nhân: ngon, yên tĩnh, có ổ cắm, đi date, làm việc.
+Web app tĩnh để lưu quán ăn/cafe theo gu cá nhân: ngon, yên tĩnh, có ổ cắm, đi date, làm việc. Giao diện hỗ trợ Tiếng Việt và English (nút đổi ngôn ngữ VI/EN trên thanh công cụ, lưu lựa chọn trong trình duyệt).
 
 ## Chạy local
 
