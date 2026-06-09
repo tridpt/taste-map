@@ -2480,3 +2480,38 @@ body.pin-mode #map {
   width: 16px;
   height: 16px;
 }
+
+.place-detail-albums {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.detail-album {
+  display: grid;
+  gap: 5px;
+}
+
+.detail-album-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-album-label span {
+  color: var(--teal);
+}
+
+.detail-album-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detail-album-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}

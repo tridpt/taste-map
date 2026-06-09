@@ -361,7 +361,7 @@ function hydrateStaticControls() {
 
 function initMap() {
   if (!window.L) {
-    showStatus("Không tải được bản đồ.", true);
+    showStatus(t("msg.mapLoadFail"), true);
     return;
   }
 
@@ -392,7 +392,7 @@ function initMap() {
     if (!isEditorOpen()) openEditor();
     reverseLookup(event.latlng.lat, event.latlng.lng);
     setPinMode(false);
-    showStatus("Đã chọn vị trí.");
+    showStatus(t("msg.pinPicked"));
   });
 }
 
@@ -462,15 +462,15 @@ function bindEvents() {
     const type = createCustomType(els.newTypeName.value);
     if (type) {
       els.newTypeName.value = "";
-      showStatus(`Đã thêm loại "${type.label}".`);
+      showStatus(t("msg.typeAdded", { name: type.label }));
     } else {
-      showStatus("Tên loại không hợp lệ.", true);
+      showStatus(t("msg.typeInvalid"), true);
     }
   });
   els.typeManagerList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-delete-type]");
     if (!button) return;
-    if (!window.confirm("Xóa loại này? Quán thuộc loại sẽ chuyển về Cafe.")) return;
+    if (!window.confirm(t("msg.confirmDeleteType"))) return;
     deleteCustomType(button.dataset.deleteType);
   });
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
@@ -602,7 +602,7 @@ function bindEvents() {
     if (!els.placeName.value.trim()) els.placeName.value = name;
     if (!els.placeAddress.value.trim()) els.placeAddress.value = address;
     els.geoResults.classList.add("hidden");
-    showStatus("Đã đưa vị trí vào form.");
+    showStatus(t("msg.geoToForm"));
   });
 
   els.ratingFields.addEventListener("input", (event) => {
@@ -701,7 +701,7 @@ function loadPlaces() {
     if (!Array.isArray(parsed)) throw new Error("Invalid place store");
     return parsed.map(normalizePlace).filter(isValidPlace);
   } catch {
-    showStatus("Không đọc được dữ liệu đã lưu.", true);
+    showStatus(t("msg.dataLoadFail"), true);
     return [];
   }
 }
@@ -954,7 +954,7 @@ function renderTagManager() {
   const tags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "vi"));
 
   if (tags.length === 0) {
-    els.tagManager.innerHTML = '<p class="stats-note">Chưa có tag nào.</p>';
+    els.tagManager.innerHTML = `<p class="stats-note">${escapeHtml(t("ui.noTags"))}</p>`;
     return;
   }
 
@@ -962,10 +962,10 @@ function renderTagManager() {
     <div class="tag-manager-row">
       <span class="tag-manager-name">${escapeHtml(tag)} <span>${count}</span></span>
       <div class="tag-manager-actions">
-        <button class="icon-button" type="button" data-tag-action="rename" data-tag="${escapeAttr(tag)}" title="Đổi tên" aria-label="Đổi tên tag">
+        <button class="icon-button" type="button" data-tag-action="rename" data-tag="${escapeAttr(tag)}" title="${escapeAttr(t("ui.rename"))}" aria-label="${escapeAttr(t("ui.renameTag"))}">
           <i data-lucide="pencil"></i>
         </button>
-        <button class="icon-button" type="button" data-tag-action="delete" data-tag="${escapeAttr(tag)}" title="Xóa" aria-label="Xóa tag">
+        <button class="icon-button" type="button" data-tag-action="delete" data-tag="${escapeAttr(tag)}" title="${escapeAttr(t("ui.delete"))}" aria-label="${escapeAttr(t("ui.deleteTag"))}">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
@@ -978,14 +978,14 @@ function handleTagManagerAction(event) {
   if (!button) return;
   const tag = button.dataset.tag;
   if (button.dataset.tagAction === "rename") {
-    const next = window.prompt(`Đổi tên tag "${tag}" thành:`, tag);
+    const next = window.prompt(t("prompt.renameTag", { tag }), tag);
     if (next === null) return;
     const affected = renameTag(tag, next);
-    showStatus(affected ? `Đã đổi tên tag ở ${affected} quán.` : "Tên tag không hợp lệ.", !affected);
+    showStatus(affected ? t("msg.tagRenamed", { n: affected }) : t("msg.tagInvalid"), !affected);
   } else if (button.dataset.tagAction === "delete") {
-    if (!window.confirm(`Xóa tag "${tag}" khỏi tất cả quán?`)) return;
+    if (!window.confirm(t("prompt.confirmDeleteTag", { tag }))) return;
     const affected = deleteTag(tag);
-    showStatus(`Đã xóa tag khỏi ${affected} quán.`);
+    showStatus(t("msg.tagDeleted", { n: affected }));
   }
 }
 
@@ -1069,7 +1069,7 @@ function renderRecommendations() {
   els.rerollRecommendationsBtn.disabled = candidates.length <= 1 || (mood === "nearby" && !userLocation);
 
   if (mood === "nearby" && !userLocation) {
-    els.recommendationList.innerHTML = '<p class="recommendation-empty">Bấm nút vị trí để gợi ý quán gần bạn.</p>';
+    els.recommendationList.innerHTML = `<p class="recommendation-empty">${escapeHtml(t("ui.recNeedLocation"))}</p>`;
     return;
   }
 
@@ -1077,7 +1077,7 @@ function renderRecommendations() {
   const recommended = getRecommendedPlaces(scored);
 
   if (recommended.length === 0) {
-    els.recommendationList.innerHTML = '<p class="recommendation-empty">Chưa có quán phù hợp.</p>';
+    els.recommendationList.innerHTML = `<p class="recommendation-empty">${escapeHtml(t("ui.recEmpty"))}</p>`;
     return;
   }
 
@@ -1090,7 +1090,7 @@ function renderRecommendations() {
       <button class="recommendation-item" type="button" data-place-id="${escapeAttr(place.id)}">
         <span>
           <strong>${escapeHtml(place.name)}</strong>
-          <span>${escapeHtml(meta || place.address || "Chưa có địa chỉ")}</span>
+          <span>${escapeHtml(meta || place.address || t("ui.noAddress"))}</span>
         </span>
         <span class="score-badge">${Math.round(score)}</span>
       </button>
@@ -1101,7 +1101,7 @@ function renderRecommendations() {
 function rerollRecommendations() {
   recommendationRerollCount += 1;
   renderRecommendations();
-  showStatus("Đã random lại gợi ý.");
+  showStatus(t("msg.recReroll"));
 }
 
 function getFavoriteReminders() {
@@ -1128,7 +1128,7 @@ function renderFavoriteReminder() {
   }
 
   const items = reminders.map(({ place, lastVisit }) => {
-    const note = lastVisit ? `${daysSince(lastVisit)} ngày` : "chưa ghé lần nào";
+    const note = lastVisit ? t("ui.days", { n: daysSince(lastVisit) }) : t("ui.neverVisited");
     return `
       <button class="favorite-reminder-item" type="button" data-place-id="${escapeAttr(place.id)}">
         <span class="favorite-reminder-name">${escapeHtml(place.name)}</span>
@@ -1141,7 +1141,7 @@ function renderFavoriteReminder() {
   els.favoriteReminder.innerHTML = `
     <div class="favorite-reminder-head">
       <i data-lucide="bell"></i>
-      <span>Lâu rồi chưa ghé quán ruột</span>
+      <span>${escapeHtml(t("ui.reminderTitle"))}</span>
     </div>
     <div class="favorite-reminder-list">${items}</div>
   `;
@@ -1221,7 +1221,7 @@ function renderList(filtered) {
           <div class="place-item-top">
             <div class="place-title">
               <h3>${escapeHtml(place.name)}</h3>
-              <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
+              <p>${escapeHtml(place.address || t("ui.noAddress"))}</p>
             </div>
             <span class="score-badge">${Math.round(getFitScore(place))}</span>
           </div>
@@ -1233,15 +1233,15 @@ function renderList(filtered) {
             <span class="price-badge">${formatPrice(place.priceLevel)}</span>
             ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
             ${status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : ""}
-            ${place.visits.length ? `<span class="price-badge">${place.visits.length} lần ghé</span>` : ""}
-            ${place.favorite ? '<span class="price-badge">Quán ruột</span>' : ""}
+            ${place.visits.length ? `<span class="price-badge">${escapeHtml(t("ui.visitsCount", { n: place.visits.length }))}</span>` : ""}
+            ${place.favorite ? `<span class="price-badge">${escapeHtml(t("ui.favorite"))}</span>` : ""}
           </div>
           <div class="rating-strip">${ratings}</div>
           ${tags ? `<div class="place-meta">${tags}</div>` : ""}
           <div class="place-meta">
-            <button class="text-button" type="button" data-action="edit" data-id="${escapeAttr(place.id)}">Sửa</button>
+            <button class="text-button" type="button" data-action="edit" data-id="${escapeAttr(place.id)}">${escapeHtml(t("ui.edit"))}</button>
             <button class="text-button" type="button" data-action="favorite" data-id="${escapeAttr(place.id)}">
-              ${place.favorite ? "Bỏ ruột" : "Quán ruột"}
+              ${place.favorite ? escapeHtml(t("ui.unfavorite")) : escapeHtml(t("ui.favorite"))}
             </button>
           </div>
         </div>
@@ -1304,13 +1304,13 @@ function renderHeat(filtered) {
 
 function toggleHeatmap() {
   if (typeof L.heatLayer !== "function") {
-    showStatus("Không tải được lớp heatmap.", true);
+    showStatus(t("msg.heatLoadFail"), true);
     return;
   }
   heatmapMode = !heatmapMode;
   els.heatmapBtn.setAttribute("aria-pressed", String(heatmapMode));
   render();
-  showStatus(heatmapMode ? "Đang xem mật độ heatmap." : "Đã tắt heatmap.");
+  showStatus(heatmapMode ? t("msg.heatOn") : t("msg.heatOff"));
 }
 
 function getFilteredPlaces() {
@@ -1467,7 +1467,7 @@ function getOpeningStatusAt(place, day, minutes) {
 
   return {
     state: isOpen ? "open" : "closed",
-    label: isOpen ? "Đang mở" : "Có thể đóng",
+    label: isOpen ? t("ui.statusOpen") : t("ui.statusClosed"),
   };
 }
 
@@ -1525,7 +1525,7 @@ function createPopup(place) {
   return `
     <div class="place-popup">
       <h3>${escapeHtml(place.name)}</h3>
-      <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
+      <p>${escapeHtml(place.address || t("ui.noAddress"))}</p>
       <div class="place-popup-row">
         <span class="type-badge" style="background:${escapeAttr(type.color)}">${escapeHtml(typeLabel(type))}</span>
         <span class="price-badge">${formatPrice(place.priceLevel)}</span>
@@ -1544,7 +1544,7 @@ function renderPlaceDetail() {
     els.placeDetailContent.innerHTML = `
       <div class="place-detail-empty">
         <i data-lucide="mouse-pointer-2"></i>
-        <span>Chọn một quán trong danh sách hoặc trên bản đồ để xem chi tiết.</span>
+        <span>${escapeHtml(t("ui.detailEmpty"))}</span>
       </div>
     `;
     return;
@@ -1561,13 +1561,13 @@ function renderPlaceDetail() {
       ${escapeHtml(tag)}
     </button>
   `).join("");
-  els.placeDetailMeta.textContent = `${Math.round(getFitScore(place))} điểm`;
+  els.placeDetailMeta.textContent = t("ui.points", { n: Math.round(getFitScore(place)) });
   const meta = [
     `<span class="type-badge" style="background:${escapeAttr(type.color)}"><i data-lucide="${escapeAttr(type.icon)}"></i>${escapeHtml(typeLabel(type))}</span>`,
     `<span class="price-badge">${formatPrice(place.priceLevel)}</span>`,
     distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : "",
     status.label ? `<span class="price-badge status-badge ${status.state}">${escapeHtml(status.label)}</span>` : "",
-    place.favorite ? '<span class="price-badge">Quán ruột</span>' : "",
+    place.favorite ? `<span class="price-badge">${escapeHtml(t("ui.favorite"))}</span>` : "",
   ].filter(Boolean).join("");
 
   els.placeDetailContent.innerHTML = `
@@ -1581,7 +1581,7 @@ function renderPlaceDetail() {
         <div class="place-detail-title">
           <div>
             <h3>${escapeHtml(place.name)}</h3>
-            <p>${escapeHtml(place.address || "Chưa có địa chỉ")}</p>
+            <p>${escapeHtml(place.address || t("ui.noAddress"))}</p>
           </div>
           <span class="score-badge">${Math.round(getFitScore(place))}</span>
         </div>
@@ -1594,7 +1594,7 @@ function renderPlaceDetail() {
           </button>
           <button class="ghost-button" type="button" data-detail-action="directions" data-id="${escapeAttr(place.id)}">
             <i data-lucide="route"></i>
-            <span>Chỉ đường</span>
+            <span>${escapeHtml(t("ui.directions"))}</span>
           </button>
           <button class="ghost-button" type="button" data-detail-action="directions-apple" data-id="${escapeAttr(place.id)}">
             <i data-lucide="apple"></i>
@@ -1602,25 +1602,25 @@ function renderPlaceDetail() {
           </button>
           <button class="ghost-button" type="button" data-detail-action="share" data-id="${escapeAttr(place.id)}">
             <i data-lucide="share-2"></i>
-            <span>Chia sẻ</span>
+            <span>${escapeHtml(t("ui.share"))}</span>
           </button>
           <button class="ghost-button" type="button" data-detail-action="itinerary" data-id="${escapeAttr(place.id)}">
             <i data-lucide="${itinerary.includes(place.id) ? "calendar-minus" : "calendar-plus"}"></i>
-            <span>${itinerary.includes(place.id) ? "Bỏ lịch trình" : "Thêm lịch trình"}</span>
+            <span>${itinerary.includes(place.id) ? escapeHtml(t("ui.removeItinerary")) : escapeHtml(t("ui.addItinerary"))}</span>
           </button>
           <button class="ghost-button" type="button" data-detail-action="visit" data-id="${escapeAttr(place.id)}">
             <i data-lucide="calendar-check"></i>
-            <span>Đã ghé</span>
+            <span>${escapeHtml(t("ui.visited"))}</span>
           </button>
           <button class="ghost-button" type="button" data-detail-action="edit" data-id="${escapeAttr(place.id)}">
             <i data-lucide="pencil"></i>
-            <span>Sửa</span>
+            <span>${escapeHtml(t("ui.edit"))}</span>
           </button>
         </div>
         ${place.notes ? `<p class="place-detail-note">${escapeHtml(place.notes)}</p>` : ""}
         ${collections.length ? `
           <div class="place-collections">
-            <span class="place-collections-label">Bộ sưu tập</span>
+            <span class="place-collections-label">${escapeHtml(t("ui.collections"))}</span>
             <div class="place-collections-chips">
               ${collections.map((collection) => `
                 <button class="chip-button" type="button" data-detail-action="toggle-collection" data-collection-id="${escapeAttr(collection.id)}" data-id="${escapeAttr(place.id)}" aria-pressed="${collection.placeIds.includes(place.id) ? "true" : "false"}">
@@ -1631,18 +1631,38 @@ function renderPlaceDetail() {
           </div>
         ` : ""}
         <div class="place-detail-visits">
-          <strong>${lastVisit ? `Ghé gần nhất: ${escapeHtml(formatDate(lastVisit))}` : "Chưa lưu lần ghé"}</strong>
+          <strong>${lastVisit ? t("ui.lastVisitAt", { date: formatDate(lastVisit) }) : t("ui.noVisit")}</strong>
           ${recentVisits.length ? recentVisits.map((visit) => `
             <span>${escapeHtml(formatDate(visit.date))} • ${visit.rating}/5${visit.note ? ` · ${escapeHtml(visit.note)}` : ""}</span>
           `).join("") : ""}
         </div>
+        ${renderDetailAlbums(place)}
       </div>
     </div>
   `;
 }
 
-function handlePlaceDetailAction(event) {
-  const button = event.target.closest("[data-detail-action]");
+function renderDetailAlbums(place) {
+  if (!place.images || place.images.length === 0) return "";
+  const sections = PHOTO_CATEGORIES.map((cat) => {
+    const photos = place.images.filter((img) => (img.category || "other") === cat.key);
+    if (photos.length === 0) return "";
+    const thumbs = photos.map((img) => {
+      const url = imageDataUrl(img);
+      return url ? `<img class="detail-album-thumb" src="${escapeAttr(url)}" alt="${escapeAttr(t(`album.${cat.key}`))}" loading="lazy" />` : "";
+    }).join("");
+    if (!thumbs) return "";
+    return `
+      <div class="detail-album">
+        <span class="detail-album-label">${escapeHtml(t(`album.${cat.key}`))} <span>${photos.length}</span></span>
+        <div class="detail-album-row">${thumbs}</div>
+      </div>
+    `;
+  }).join("");
+  return sections ? `<div class="place-detail-albums">${sections}</div>` : "";
+}
+
+function handlePlaceDetailAction(event) {  const button = event.target.closest("[data-detail-action]");
   if (!button) return;
 
   if (button.dataset.detailAction === "filter-tag") {
@@ -1689,7 +1709,7 @@ function filterByDetailTag(tag) {
   setSidebarCollapsed(false);
   syncFilterButtons();
   render();
-  showStatus(`Đã lọc theo tag "${tag}".`);
+  showStatus(t("msg.tagFiltered", { tag }));
 }
 
 function openExternalMap(place, directions) {
@@ -1752,13 +1772,13 @@ async function copyShareText(text) {
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
-      showStatus("Đã copy thông tin quán để chia sẻ.");
+      showStatus(t("msg.shareCopied"));
       return;
     }
   } catch {
     // fall through to manual copy hint
   }
-  showStatus("Chưa copy được, hãy copy link Google Maps thủ công.", true);
+  showStatus(t("msg.shareCopyFail"), true);
 }
 
 function applyStoredTheme() {
@@ -1853,7 +1873,7 @@ function toggleTheme() {
   const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
   localStorage.setItem(THEME_KEY, next);
   applyTheme(next);
-  showStatus(next === "dark" ? "Đã bật giao diện tối." : "Đã bật giao diện sáng.");
+  showStatus(next === "dark" ? t("msg.themeDark") : t("msg.themeLight"));
 }
 
 function openEditor(place = null) {
@@ -1864,8 +1884,8 @@ function openEditor(place = null) {
   }
   els.workspace.classList.add("editor-open");
   els.editorPanel.setAttribute("aria-hidden", "false");
-  els.editorMode.textContent = isEdit ? "Đang sửa" : (hasDraft ? "Nhập từ Maps" : "Quán mới");
-  els.editorTitle.textContent = hasDraft ? place.name : "Lưu quán";
+  els.editorMode.textContent = isEdit ? t("editor.editing") : (hasDraft ? t("editor.fromMaps") : t("editor.new"));
+  els.editorTitle.textContent = hasDraft ? place.name : t("editor.save");
   els.deletePlaceBtn.classList.toggle("hidden", !isEdit);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -1979,10 +1999,10 @@ async function handlePhotoSelection() {
     editorPhotos = [...editorPhotos, ...photos.filter(Boolean)];
     renderEditorPhotos();
     if (files.length > selected.length) {
-      showStatus("Mỗi quán lưu tối đa 8 ảnh.");
+      showStatus(t("msg.photoMax"));
     }
   } catch {
-    showStatus("Không đọc được ảnh.", true);
+    showStatus(t("msg.photoReadFail"), true);
   }
 }
 
@@ -2034,7 +2054,7 @@ function renderEditorPhotos() {
           <select class="photo-category" data-photo-category="${escapeAttr(photo.id)}" aria-label="Album ảnh">
             ${optionsFor(photo.category || "other")}
           </select>
-          <button type="button" data-photo-id="${escapeAttr(photo.id)}" title="Xóa ảnh" aria-label="Xóa ảnh">
+          <button type="button" data-photo-id="${escapeAttr(photo.id)}" title="${escapeAttr(t("ui.deletePhoto"))}" aria-label="${escapeAttr(t("ui.deletePhoto"))}">
             <i data-lucide="x"></i>
           </button>
         </div>
@@ -2086,7 +2106,7 @@ function renderVisitHistory() {
         <strong>${escapeHtml(formatDate(visit.date))} • ${visit.rating}/5</strong>
         ${visit.note ? `<span>${escapeHtml(visit.note)}</span>` : ""}
       </span>
-      <button type="button" data-visit-id="${escapeAttr(visit.id)}" title="Xóa lần ghé" aria-label="Xóa lần ghé">
+      <button type="button" data-visit-id="${escapeAttr(visit.id)}" title="${escapeAttr(t("ui.deleteVisit"))}" aria-label="${escapeAttr(t("ui.deleteVisit"))}">
         <i data-lucide="x"></i>
       </button>
     </div>
@@ -2128,7 +2148,7 @@ function savePlace(event) {
   });
 
   if (!isValidPlace(place)) {
-    showStatus("Tên quán và tọa độ cần hợp lệ.", true);
+    showStatus(t("msg.placeInvalid"), true);
     return;
   }
 
@@ -2145,7 +2165,7 @@ function savePlace(event) {
   closeEditor();
   render();
   selectPlace(place.id, true);
-  showUndoStatus("Đã lưu quán.");
+  showUndoStatus(t("msg.placeSaved"));
 }
 
 function deleteCurrentPlace() {
@@ -2153,7 +2173,7 @@ function deleteCurrentPlace() {
   if (!id) return;
   const place = getPlace(id);
   if (!place) return;
-  if (!confirm(`Xóa "${place.name}"?`)) return;
+  if (!confirm(t("msg.confirmDeletePlace", { name: place.name }))) return;
 
   pushUndoSnapshot("xóa quán");
   places = places.filter((item) => item.id !== id);
@@ -2161,7 +2181,7 @@ function deleteCurrentPlace() {
   savePlaces();
   closeEditor();
   render();
-  showUndoStatus("Đã xóa quán.");
+  showUndoStatus(t("msg.placeDeleted"));
 }
 
 function selectPlace(id, panTo) {
@@ -2190,7 +2210,7 @@ function toggleFavorite(id) {
   place.updatedAt = Date.now();
   savePlaces();
   render();
-  showUndoStatus("Đã cập nhật quán ruột.");
+  showUndoStatus(t("msg.favoriteUpdated"));
 }
 
 function markPlaceVisited(id) {
@@ -2200,7 +2220,7 @@ function markPlaceVisited(id) {
   const today = todayStamp();
   const alreadyMarkedToday = place.visits.some((visit) => visit.date === today);
   if (alreadyMarkedToday) {
-    showStatus("Hôm nay đã ghi nhận quán này.");
+    showStatus(t("msg.visitToday"));
     return;
   }
 
@@ -2219,7 +2239,7 @@ function markPlaceVisited(id) {
   selectedId = place.id;
   savePlaces();
   render();
-  showUndoStatus("Đã đánh dấu lần ghé hôm nay.");
+  showUndoStatus(t("msg.visitMarked"));
 }
 
 function setFormCoordinates(lat, lng) {
@@ -2295,17 +2315,17 @@ function setPinMode(value) {
   pinMode = value;
   els.pinModeBtn.setAttribute("aria-pressed", String(pinMode));
   document.body.classList.toggle("pin-mode", pinMode);
-  if (pinMode) showStatus("Chọn một điểm trên bản đồ.");
+  if (pinMode) showStatus(t("msg.pinHint"));
 }
 
 async function pickRandomNearby() {
   const center = userLocation || (map && map.getCenter());
   if (!center) {
-    showStatus("Chưa có vị trí để tìm quán gần.", true);
+    showStatus(t("msg.nearbyNoCenter"), true);
     return;
   }
 
-  showStatus("Đang tìm quán gần bạn...");
+  showStatus(t("msg.nearbySearching"));
   try {
     const pois = await fetchNearbyPois(center.lat, center.lng, RANDOM_NEARBY_RADIUS);
     const fresh = pois.filter((poi) => !isPoiAlreadySaved(poi));
@@ -2314,9 +2334,9 @@ async function pickRandomNearby() {
       showDiscoveredPlace(pool[Math.floor(Math.random() * pool.length)]);
       return;
     }
-    showStatus("Không tìm thấy quán mới gần đây, thử quán đã lưu.");
+    showStatus(t("msg.nearbyNoNew"));
   } catch {
-    showStatus("Không tải được quán gần (mạng?). Dùng danh sách đã lưu.", true);
+    showStatus(t("msg.nearbyNetFail"), true);
   }
   fallbackRandomSaved();
 }
@@ -2324,13 +2344,13 @@ async function pickRandomNearby() {
 function fallbackRandomSaved() {
   const pool = getFilteredPlaces();
   if (pool.length === 0) {
-    showStatus("Chưa có quán nào để gợi ý.", true);
+    showStatus(t("msg.nearbyNoSaved"), true);
     return;
   }
   const place = (userLocation && randomNearbyPlace()) || pool[Math.floor(Math.random() * pool.length)];
   selectPlace(place.id, true);
   const distance = formatDistance(getDistanceFromUser(place));
-  showStatus(`Gợi ý từ danh sách: ${place.name}${distance ? ` · ${distance}` : ""}.`);
+  showStatus(t("msg.nearbyFromList", { name: place.name, dist: distance ? ` · ${distance}` : "" }));
 }
 
 async function fetchNearbyPois(lat, lng, radius) {
@@ -2402,7 +2422,7 @@ function showDiscoveredPlace(poi) {
     discoverMarker.bindPopup(`
       <div class="place-popup">
         <h3>${escapeHtml(draft.name)}</h3>
-        <p>${escapeHtml(draft.address || "Quán gần bạn")}</p>
+        <p>${escapeHtml(draft.address || t("ui.discoverNearby"))}</p>
         <div class="place-popup-row">
           <span class="type-badge" style="background:${escapeAttr(getType(draft.type).color)}">${escapeHtml(typeLabel(getType(draft.type)))}</span>
           ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
@@ -2411,8 +2431,8 @@ function showDiscoveredPlace(poi) {
     `).openPopup();
     refreshIcons();
   }
-  showStatus(`Khám phá: ${draft.name}`, false, {
-    label: "Lưu quán",
+  showStatus(t("msg.discoverFound", { name: draft.name }), false, {
+    label: t("msg.discoverSave"),
     onClick: () => {
       if (discoverMarker) {
         discoverMarker.remove();
@@ -2453,10 +2473,10 @@ function toggleItinerary(id) {
   const index = itinerary.indexOf(id);
   if (index >= 0) {
     itinerary.splice(index, 1);
-    showStatus("Đã bỏ quán khỏi lịch trình.");
+    showStatus(t("msg.itineraryRemoved"));
   } else {
     itinerary.push(id);
-    showStatus("Đã thêm quán vào lịch trình.");
+    showStatus(t("msg.itineraryAdded"));
   }
   render();
 }
@@ -2473,7 +2493,7 @@ function handleItineraryAction(event) {
   if (action === "clear") {
     itinerary = [];
     render();
-    showStatus("Đã xóa lịch trình.");
+    showStatus(t("msg.itineraryCleared"));
     return;
   }
   if (action === "save-current") {
@@ -2518,14 +2538,14 @@ function renderItinerary() {
     currentSection = `
       <div class="itinerary-empty">
         <i data-lucide="route"></i>
-        <span>Bấm "Thêm lịch trình" ở chi tiết quán để lên kế hoạch đi nhiều quán.</span>
+        <span>${escapeHtml(t("ui.itineraryEmpty"))}</span>
       </div>
     `;
   } else {
     const total = itineraryTotalDistance(stops);
     const key = routeKeyOf(stops);
     const hasReal = osrmRoute && osrmRoute.key === key;
-    const summaryLabel = hasReal ? "Quãng đường thực tế" : "Tổng quãng đường (đường chim bay)";
+    const summaryLabel = hasReal ? t("ui.routeReal") : t("ui.routeStraight");
     const summaryValue = hasReal
       ? `${formatRouteDistance(osrmRoute.distanceMeters)} · ${formatDuration(osrmRoute.durationSec)}`
       : (total > 0 ? formatRouteDistance(total) : "-");
@@ -2534,16 +2554,16 @@ function renderItinerary() {
         <span class="itinerary-index">${index + 1}</span>
         <button class="itinerary-name" type="button" data-itinerary-action="select" data-id="${escapeAttr(place.id)}">
           <strong>${escapeHtml(place.name)}</strong>
-          <span>${escapeHtml(place.address || "Chưa có địa chỉ")}</span>
+          <span>${escapeHtml(place.address || t("ui.noAddress"))}</span>
         </button>
         <div class="itinerary-stop-actions">
-          <button class="icon-button" type="button" data-itinerary-action="up" data-id="${escapeAttr(place.id)}" title="Lên" aria-label="Lên" ${index === 0 ? "disabled" : ""}>
+          <button class="icon-button" type="button" data-itinerary-action="up" data-id="${escapeAttr(place.id)}" title="${escapeAttr(t("ui.moveUp"))}" aria-label="${escapeAttr(t("ui.moveUp"))}" ${index === 0 ? "disabled" : ""}>
             <i data-lucide="chevron-up"></i>
           </button>
-          <button class="icon-button" type="button" data-itinerary-action="down" data-id="${escapeAttr(place.id)}" title="Xuống" aria-label="Xuống" ${index === stops.length - 1 ? "disabled" : ""}>
+          <button class="icon-button" type="button" data-itinerary-action="down" data-id="${escapeAttr(place.id)}" title="${escapeAttr(t("ui.moveDown"))}" aria-label="${escapeAttr(t("ui.moveDown"))}" ${index === stops.length - 1 ? "disabled" : ""}>
             <i data-lucide="chevron-down"></i>
           </button>
-          <button class="icon-button" type="button" data-itinerary-action="remove" data-id="${escapeAttr(place.id)}" title="Bỏ" aria-label="Bỏ">
+          <button class="icon-button" type="button" data-itinerary-action="remove" data-id="${escapeAttr(place.id)}" title="${escapeAttr(t("ui.remove"))}" aria-label="${escapeAttr(t("ui.remove"))}">
             <i data-lucide="x"></i>
           </button>
         </div>
@@ -2559,15 +2579,15 @@ function renderItinerary() {
       <div class="data-actions">
         <button class="primary-button" type="button" data-itinerary-action="directions">
           <i data-lucide="navigation"></i>
-          <span>Chỉ đường lịch trình</span>
+          <span>${escapeHtml(t("ui.directionsItinerary"))}</span>
         </button>
         <button class="ghost-button" type="button" data-itinerary-action="save-current">
           <i data-lucide="bookmark"></i>
-          <span>Lưu</span>
+          <span>${escapeHtml(t("ui.save"))}</span>
         </button>
         <button class="ghost-button" type="button" data-itinerary-action="clear">
           <i data-lucide="trash-2"></i>
-          <span>Xóa hết</span>
+          <span>${escapeHtml(t("ui.clearAll"))}</span>
         </button>
       </div>
     `;
@@ -2579,16 +2599,16 @@ function renderItinerary() {
       <div class="saved-itinerary">
         <button class="saved-itinerary-load" type="button" data-itinerary-action="load-saved" data-saved-id="${escapeAttr(saved.id)}">
           <strong>${escapeHtml(saved.name)}</strong>
-          <span>${saved.placeIds.length} quán</span>
+          <span>${escapeHtml(t("count.stops", { n: saved.placeIds.length }))}</span>
         </button>
-        <button class="icon-button" type="button" data-itinerary-action="delete-saved" data-saved-id="${escapeAttr(saved.id)}" title="Xóa" aria-label="Xóa">
+        <button class="icon-button" type="button" data-itinerary-action="delete-saved" data-saved-id="${escapeAttr(saved.id)}" title="${escapeAttr(t("ui.delete"))}" aria-label="${escapeAttr(t("ui.delete"))}">
           <i data-lucide="x"></i>
         </button>
       </div>
     `).join("");
     savedSection = `
       <div class="saved-itinerary-section">
-        <h3>Lịch trình đã lưu</h3>
+        <h3>${escapeHtml(t("ui.savedItineraries"))}</h3>
         <div class="saved-itinerary-list">${savedRows}</div>
       </div>
     `;
@@ -2685,7 +2705,7 @@ function formatDuration(seconds) {
 function openItineraryDirections() {
   const stops = itinerary.map((id) => getPlace(id)).filter(Boolean);
   if (stops.length === 0) {
-    showStatus("Lịch trình đang trống.", true);
+    showStatus(t("msg.itineraryEmpty"), true);
     return;
   }
   window.open(getItineraryDirectionsUrl(stops), "_blank", "noopener");
@@ -2731,20 +2751,20 @@ function saveSavedItineraries() {
 
 function saveCurrentItinerary() {
   if (itinerary.length === 0) {
-    showStatus("Lịch trình đang trống.", true);
+    showStatus(t("msg.itineraryEmpty"), true);
     return;
   }
-  const name = window.prompt("Tên lịch trình:");
+  const name = window.prompt(t("prompt.itineraryName"));
   if (name === null) return;
   const clean = String(name).trim().slice(0, 60);
   if (!clean) {
-    showStatus("Tên lịch trình không hợp lệ.", true);
+    showStatus(t("msg.itineraryNameInvalid"), true);
     return;
   }
   savedItineraries.push({ id: makeId(), name: clean, placeIds: [...itinerary] });
   saveSavedItineraries();
   render();
-  showStatus(`Đã lưu lịch trình "${clean}".`);
+  showStatus(t("msg.itinerarySaved", { name: clean }));
 }
 
 function loadSavedItinerary(id) {
@@ -2752,14 +2772,14 @@ function loadSavedItinerary(id) {
   if (!saved) return;
   itinerary = saved.placeIds.filter((placeId) => getPlace(placeId));
   render();
-  showStatus(`Đã mở lịch trình "${saved.name}".`);
+  showStatus(t("msg.itineraryOpened", { name: saved.name }));
 }
 
 function deleteSavedItinerary(id) {
   savedItineraries = savedItineraries.filter((item) => item.id !== id);
   saveSavedItineraries();
   render();
-  showStatus("Đã xóa lịch trình đã lưu.");
+  showStatus(t("msg.itineraryDeleted"));
 }
 
 function loadCollections() {
@@ -2793,11 +2813,11 @@ function createCollection(name) {
 }
 
 function promptNewCollection() {
-  const name = window.prompt("Tên bộ sưu tập mới:");
+  const name = window.prompt(t("prompt.collectionName"));
   if (name === null) return;
   const collection = createCollection(name);
-  if (collection) showStatus(`Đã tạo bộ sưu tập "${collection.name}".`);
-  else showStatus("Tên bộ sưu tập không hợp lệ.", true);
+  if (collection) showStatus(t("msg.collectionCreated", { name: collection.name }));
+  else showStatus(t("msg.collectionInvalid"), true);
 }
 
 function deleteCollection(id) {
@@ -2805,7 +2825,7 @@ function deleteCollection(id) {
   if (activeCollection === id) activeCollection = "";
   saveCollections();
   render();
-  showStatus("Đã xóa bộ sưu tập.");
+  showStatus(t("msg.collectionDeleted"));
 }
 
 function toggleCollectionMembership(collectionId, placeId) {
@@ -2837,14 +2857,14 @@ function renderCollections() {
 
   if (collections.length === 0) {
     els.collectionFilterList.innerHTML = `
-      <p class="stats-note">Tạo bộ sưu tập để gom quán theo nhóm (đi date, làm việc...).</p>
+      <p class="stats-note">${escapeHtml(t("ui.collectionsEmpty"))}</p>
     `;
     return;
   }
 
   const allChip = `
     <button class="chip-button${activeCollection === "" ? "" : ""}" type="button" data-collection-filter="" aria-pressed="${activeCollection === "" ? "true" : "false"}">
-      <span>Tất cả</span>
+      <span>${escapeHtml(t("ui.collectionAll"))}</span>
       <span>${places.length}</span>
     </button>
   `;
@@ -2855,7 +2875,7 @@ function renderCollections() {
         <span>${escapeHtml(collection.name)}</span>
         <span>${collection.placeIds.length}</span>
       </button>
-      <button class="collection-remove" type="button" data-collection-remove="${escapeAttr(collection.id)}" title="Xóa bộ sưu tập" aria-label="Xóa bộ sưu tập">
+      <button class="collection-remove" type="button" data-collection-remove="${escapeAttr(collection.id)}" title="${escapeAttr(t("ui.deleteCollectionTitle"))}" aria-label="${escapeAttr(t("ui.deleteCollectionTitle"))}">
         <i data-lucide="x"></i>
       </button>
     </span>
@@ -2876,7 +2896,7 @@ async function searchGeo() {
     const data = await geocodeQuery(query);
     renderGeoResults(data);
   } catch {
-    showStatus("Không tìm được vị trí.", true);
+    showStatus(t("msg.geoNotFound"), true);
   } finally {
     els.geoSearchBtn.disabled = false;
   }
@@ -2885,7 +2905,7 @@ async function searchGeo() {
 async function importFromGoogleMaps() {
   const raw = els.mapsLinkInput.value.trim();
   if (!raw) {
-    showStatus("Hãy dán link Google Maps.", true);
+    showStatus(t("msg.pasteLink"), true);
     return;
   }
 
@@ -2893,7 +2913,7 @@ async function importFromGoogleMaps() {
   try {
     await processGoogleMapsImportText(raw, { openSingle: true });
   } catch {
-    showStatus("Không nhập được link Google Maps.", true);
+    showStatus(t("msg.mapsImportFail"), true);
   } finally {
     els.mapsImportBtn.disabled = false;
   }
@@ -2901,7 +2921,7 @@ async function importFromGoogleMaps() {
 
 async function pasteMapsFromClipboard() {
   if (!navigator.clipboard?.readText) {
-    showStatus("Trình duyệt chưa cho đọc clipboard.", true);
+    showStatus(t("msg.clipboardBlocked"), true);
     return;
   }
 
@@ -2909,13 +2929,13 @@ async function pasteMapsFromClipboard() {
   try {
     const text = (await navigator.clipboard.readText()).trim();
     if (!text) {
-      showStatus("Clipboard đang trống.", true);
+      showStatus(t("msg.clipboardEmpty"), true);
       return;
     }
     els.mapsLinkInput.value = text;
     await processGoogleMapsImportText(text, { openSingle: true });
   } catch {
-    showStatus("Không đọc được clipboard.", true);
+    showStatus(t("msg.clipboardReadFail"), true);
   } finally {
     els.mapsClipboardBtn.disabled = false;
   }
@@ -2924,7 +2944,7 @@ async function pasteMapsFromClipboard() {
 async function processGoogleMapsImportText(raw, { openSingle = false } = {}) {
   const candidates = splitImportCandidates(raw);
   if (candidates.length === 0) {
-    showStatus("Không tìm thấy link hoặc nội dung để nhập.", true);
+    showStatus(t("msg.importNone"), true);
     return;
   }
 
@@ -2951,8 +2971,8 @@ async function processGoogleMapsImportText(raw, { openSingle = false } = {}) {
   if (resolved.length === 0) {
     const hasShort = skipped.includes("short");
     showStatus(hasShort
-      ? "Link rút gọn Google Maps cần mở ra rồi copy URL đầy đủ."
-      : "Chưa lấy được tọa độ từ nội dung này.", true);
+      ? t("msg.importShort")
+      : t("msg.importNoCoords"), true);
     return;
   }
 
@@ -2961,11 +2981,11 @@ async function processGoogleMapsImportText(raw, { openSingle = false } = {}) {
     applyImportedMapPlace(resolved[0]);
   } else {
     enqueuePendingImports(resolved);
-    showStatus(`Đã thêm ${resolved.length} quán vào hàng chờ.`);
+    showStatus(t("msg.importQueued", { n: resolved.length }));
   }
 
   if (skipped.length > 0) {
-    showStatus(`Đã nhập ${resolved.length} mục; bỏ qua ${skipped.length} mục chưa đọc được.`, true);
+    showStatus(t("msg.importPartial", { n: resolved.length, skipped: skipped.length }), true);
   }
 }
 
@@ -3007,7 +3027,7 @@ function applyImportedMapPlace(imported) {
   if (imported.address) els.placeAddress.value = imported.address;
   else if (imported.query && !els.placeName.value) els.placeName.value = imported.query;
   reverseLookup(lat, lng);
-  showStatus("Đã nhập vị trí từ Google Maps.");
+  showStatus(t("msg.mapsImported"));
 }
 
 function enqueuePendingImports(imports) {
@@ -3027,17 +3047,17 @@ function renderImportQueue() {
   els.importQueueList.innerHTML = pendingImports.map((item) => `
     <div class="import-queue-item" data-pending-id="${escapeAttr(item.pendingId)}">
       <span>
-        <strong>${escapeHtml(item.name || item.query || "Quán từ Google Maps")}</strong>
+        <strong>${escapeHtml(item.name || item.query || t("ui.importFallbackName"))}</strong>
         <span>${escapeHtml(formatImportMeta(item))}</span>
       </span>
       <div class="import-queue-actions">
-        <button class="icon-button" type="button" data-import-action="edit" title="Sửa trước khi lưu" aria-label="Sửa trước khi lưu">
+        <button class="icon-button" type="button" data-import-action="edit" title="${escapeAttr(t("ui.editBeforeSave"))}" aria-label="${escapeAttr(t("ui.editBeforeSave"))}">
           <i data-lucide="pencil"></i>
         </button>
-        <button class="icon-button" type="button" data-import-action="save" title="Lưu quán" aria-label="Lưu quán">
+        <button class="icon-button" type="button" data-import-action="save" title="${escapeAttr(t("msg.discoverSave"))}" aria-label="${escapeAttr(t("msg.discoverSave"))}">
           <i data-lucide="save"></i>
         </button>
-        <button class="icon-button" type="button" data-import-action="remove" title="Bỏ qua" aria-label="Bỏ qua">
+        <button class="icon-button" type="button" data-import-action="remove" title="${escapeAttr(t("ui.skip"))}" aria-label="${escapeAttr(t("ui.skip"))}">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -3060,7 +3080,7 @@ function handleImportQueueClick(event) {
       pendingImports = pendingImports.filter((pending) => pending.pendingId !== id);
       renderImportQueue();
       openEditor(createPlaceDraftFromImport(item));
-      showStatus("Đang sửa quán từ hàng chờ.");
+      showStatus(t("msg.queueEditing"));
       break;
     case "save":
       saveImportedPlace(item);
@@ -3105,14 +3125,14 @@ function saveImportedPlace(imported) {
   savePlaces();
   render();
   selectPlace(place.id, true);
-  showUndoStatus("Đã lưu quán từ Google Maps.");
+  showUndoStatus(t("msg.placeSavedMaps"));
 }
 
 function createPlaceDraftFromImport(imported) {
   const normalized = normalizeImportedPlace(imported);
   return {
     id: "",
-    name: normalized.name || normalized.query || "Quán từ Google Maps",
+    name: normalized.name || normalized.query || t("ui.importFallbackName"),
     type: "cafe",
     address: normalized.address || normalized.query || "",
     lat: Number(normalized.lat),
@@ -3151,7 +3171,7 @@ function formatImportMeta(item) {
   const parts = [];
   if (hasCoordinates(item)) parts.push(`${Number(item.lat).toFixed(5)}, ${Number(item.lng).toFixed(5)}`);
   if (item.address) parts.push(item.address);
-  return parts.join(" • ") || "Chưa có địa chỉ";
+  return parts.join(" • ") || t("ui.noAddress");
 }
 
 function parseGoogleMapsInput(raw) {
@@ -3306,7 +3326,7 @@ function safeDecode(value) {
 
 function renderGeoResults(results) {
   if (!Array.isArray(results) || results.length === 0) {
-    els.geoResults.innerHTML = '<button class="geo-result" type="button"><strong>Không có kết quả</strong></button>';
+    els.geoResults.innerHTML = `<button class="geo-result" type="button"><strong>${escapeHtml(t("ui.geoNoResults"))}</strong></button>`;
     els.geoResults.classList.remove("hidden");
     return;
   }
@@ -3351,7 +3371,7 @@ async function reverseLookup(lat, lng) {
 
 function locateUser() {
   if (!navigator.geolocation || !map) {
-    showStatus("Trình duyệt chưa hỗ trợ định vị.", true);
+    showStatus(t("msg.locateUnsupported"), true);
     return;
   }
 
@@ -3369,9 +3389,9 @@ function locateUser() {
         fillOpacity: 1,
       }).addTo(map);
       render();
-      showStatus("Đã cập nhật vị trí.");
+      showStatus(t("msg.locateUpdated"));
     },
-    () => showStatus("Không lấy được vị trí.", true),
+    () => showStatus(t("msg.locateFail"), true),
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
   );
 }
@@ -3388,14 +3408,14 @@ function createBackupPayload() {
 function exportPlainBackup() {
   downloadJson(createBackupPayload(), `taste-map-backup-${todayStamp()}.json`);
   markBackupExported();
-  showStatus("Đã tạo file JSON backup.");
+  showStatus(t("msg.backupJson"));
 }
 
 async function exportEncryptedBackup() {
   const password = prompt("Đặt mật khẩu cho file backup mã hóa:");
   if (password === null) return;
   if (password.length < 8) {
-    showStatus("Mật khẩu backup tối thiểu 8 ký tự.", true);
+    showStatus(t("msg.backupPwShort"), true);
     return;
   }
 
@@ -3403,9 +3423,9 @@ async function exportEncryptedBackup() {
     const encrypted = await encryptBackup(createBackupPayload(), password);
     downloadJson(encrypted, `taste-map-backup-encrypted-${todayStamp()}.json`);
     markBackupExported();
-    showStatus("Đã tạo file backup mã hóa.");
+    showStatus(t("msg.backupEncrypted"));
   } catch {
-    showStatus("Không mã hóa được backup.", true);
+    showStatus(t("msg.backupEncryptFail"), true);
   }
 }
 
@@ -3422,9 +3442,9 @@ async function importPlaces() {
     if (!Array.isArray(imported)) throw new Error("Invalid backup");
     const normalized = imported.map(normalizePlace).filter(isValidPlace);
     if (normalized.length === 0) throw new Error("No valid places");
-    replaceAllPlaces(normalized, `Nhập ${normalized.length} quán và thay dữ liệu hiện tại?`, "Đã nhập dữ liệu.");
+    replaceAllPlaces(normalized, t("msg.importReplaceConfirm", { n: normalized.length }), t("msg.importDone"));
   } catch {
-    showStatus("File nhập không hợp lệ.", true);
+    showStatus(t("msg.importInvalidFile"), true);
   }
 }
 
@@ -3505,12 +3525,14 @@ async function handleCsvImport() {
     const text = await file.text();
     const result = importCsvText(text);
     if (result.added === 0) {
-      showStatus(result.message || "Không có dòng hợp lệ trong CSV.", true);
+      showStatus(result.message || t("msg.csvNoValid"), true);
       return;
     }
-    showUndoStatus(`Đã nhập ${result.added} quán từ CSV${result.skipped ? `, bỏ qua ${result.skipped}` : ""}.`);
+    showUndoStatus(result.skipped
+      ? t("msg.csvAddedSkip", { n: result.added, skipped: result.skipped })
+      : t("msg.csvAdded", { n: result.added }));
   } catch {
-    showStatus("Không đọc được file CSV.", true);
+    showStatus(t("msg.csvReadFail"), true);
   }
 }
 
@@ -3565,7 +3587,7 @@ function importCsvText(text) {
   }
 
   if (drafts.length === 0) {
-    return { added: 0, skipped, message: "Không có dòng nào có tên và tọa độ hợp lệ." };
+    return { added: 0, skipped, message: t("msg.csvNoValidRows") };
   }
 
   pushUndoSnapshot("nhập CSV");
@@ -3625,7 +3647,7 @@ function parseCsv(text) {
 
 function exportCsv() {
   if (places.length === 0) {
-    showStatus("Chưa có quán để xuất.", true);
+    showStatus(t("msg.csvNoPlaces"), true);
     return;
   }
   const header = ["name", "type", "address", "lat", "lng", "price", "tags", "notes", "favorite"];
@@ -3644,7 +3666,7 @@ function exportCsv() {
     ].map(csvCell).join(","));
   });
   downloadText(lines.join("\n"), `taste-map-${todayStamp()}.csv`, "text/csv");
-  showStatus(`Đã xuất ${places.length} quán ra CSV.`);
+  showStatus(t("msg.csvExported", { n: places.length }));
 }
 
 function csvCell(value) {
@@ -3686,7 +3708,7 @@ function pushUndoSnapshot(label) {
 function undoLastChange() {
   const snapshot = undoStack.pop();
   if (!snapshot) {
-    showStatus("Không có thao tác để hoàn tác.", true);
+    showStatus(t("msg.undoEmpty"), true);
     return;
   }
   places = snapshot.places.map(normalizePlace).filter(isValidPlace);
@@ -3695,12 +3717,12 @@ function undoLastChange() {
   closeEditor();
   render();
   if (selectedId && getPlace(selectedId)) selectPlace(selectedId, true);
-  showStatus(`Đã hoàn tác ${snapshot.label}.`);
+  showStatus(t("msg.undone"));
 }
 
 function showUndoStatus(message) {
   showStatus(message, false, {
-    label: "Hoàn tác",
+    label: t("ui.undo"),
     onClick: undoLastChange,
   });
 }
@@ -3749,21 +3771,21 @@ function renderStats() {
   const stats = computeStats();
 
   if (stats.totalVisits === 0) {
-    els.statsSummary.textContent = "Chưa có lần ghé";
+    els.statsSummary.textContent = t("stats.noVisit");
     els.statsContent.innerHTML = `
       <div class="stats-empty">
         <i data-lucide="bar-chart-3"></i>
-        <span>Đánh dấu "Đã ghé" để xem thống kê thói quen của bạn.</span>
+        <span>${escapeHtml(t("ui.statsEmpty"))}</span>
       </div>
     `;
     return;
   }
 
-  els.statsSummary.textContent = `${stats.totalVisits} lần ghé`;
+  els.statsSummary.textContent = t("ui.visitsCount", { n: stats.totalVisits });
 
   const monthlyAvgSpend = stats.totalSpending / 6;
   const topPlaceLabel = stats.topPlace
-    ? `${escapeHtml(stats.topPlace.name)} · ${stats.topPlace.visits.length} lần`
+    ? `${escapeHtml(stats.topPlace.name)} · ${t("ui.times", { n: stats.topPlace.visits.length })}`
     : "-";
 
   const typeRows = TYPES
@@ -3786,7 +3808,7 @@ function renderStats() {
   const maxMonth = Math.max(1, ...stats.months.map((month) => month.count));
   const monthBars = stats.months
     .map((month) => `
-      <div class="stat-month" title="${escapeAttr(month.title)}: ${month.count} lần · ${formatVnd(month.spend)}">
+      <div class="stat-month" title="${escapeAttr(month.title)}: ${escapeAttr(t("ui.times", { n: month.count }))} · ${formatVnd(month.spend)}">
         <div class="stat-month-bar">
           <i style="--height:${Math.round((month.count / maxMonth) * 100)}%"></i>
         </div>
@@ -3813,7 +3835,7 @@ function renderStats() {
     .map(({ place, lastVisit }) => `
       <button class="stale-place" type="button" data-stale-id="${escapeAttr(place.id)}">
         <span class="stale-name">${escapeHtml(place.name)}</span>
-        <span class="stale-days">${daysSince(lastVisit)} ngày</span>
+        <span class="stale-days">${escapeHtml(t("ui.days", { n: daysSince(lastVisit) }))}</span>
       </button>
     `)
     .join("");
@@ -3821,41 +3843,41 @@ function renderStats() {
   els.statsContent.innerHTML = `
     <div class="stats-grid">
       <div class="stat-tile">
-        <span>Tổng lần ghé</span>
+        <span>${escapeHtml(t("ui.statTotalVisits"))}</span>
         <strong>${stats.totalVisits}</strong>
       </div>
       <div class="stat-tile">
-        <span>Quán ghé nhiều nhất</span>
+        <span>${escapeHtml(t("ui.statTopPlace"))}</span>
         <strong class="stat-top-place">${topPlaceLabel}</strong>
       </div>
       <div class="stat-tile">
-        <span>Chi tiêu ước tính (6 tháng)</span>
+        <span>${escapeHtml(t("ui.statSpend6m"))}</span>
         <strong>${formatVnd(stats.totalSpending)}</strong>
       </div>
       <div class="stat-tile">
-        <span>Trung bình / tháng</span>
+        <span>${escapeHtml(t("ui.statSpendAvg"))}</span>
         <strong>${formatVnd(Math.round(monthlyAvgSpend))}</strong>
       </div>
     </div>
     <div class="stats-section">
-      <h3>Điểm trung bình theo loại</h3>
+      <h3>${escapeHtml(t("ui.statAvgByType"))}</h3>
       ${typeRows
         ? `<div class="stat-type-list">${typeRows}</div>`
-        : '<p class="stats-note">Chưa có điểm từ lịch sử ghé.</p>'}
+        : `<p class="stats-note">${escapeHtml(t("ui.statNoScore"))}</p>`}
     </div>
     <div class="stats-section">
-      <h3>Lần ghé 6 tháng gần đây</h3>
+      <h3>${escapeHtml(t("ui.statVisits6m"))}</h3>
       <div class="stat-month-chart">${monthBars}</div>
     </div>
     <div class="stats-section">
-      <h3>Chi tiêu ước tính 6 tháng</h3>
+      <h3>${escapeHtml(t("ui.statSpendChart"))}</h3>
       <div class="stat-month-chart">${spendBars}</div>
     </div>
     <div class="stats-section">
-      <h3>Lâu chưa ghé</h3>
+      <h3>${escapeHtml(t("ui.statStale"))}</h3>
       ${staleRows
         ? `<div class="stale-list">${staleRows}</div>`
-        : '<p class="stats-note">Không có quán nào quá lâu chưa ghé.</p>'}
+        : `<p class="stats-note">${escapeHtml(t("ui.statNoStale"))}</p>`}
     </div>
   `;
 }
@@ -3920,18 +3942,18 @@ function renderDataPanel() {
   const lastExport = meta.lastExportAt ? new Date(meta.lastExportAt) : null;
   const settings = getGistSettings();
   els.backupStatus.textContent = lastExport
-    ? `Backup ${formatRelativeDays(lastExport)}`
-    : "Chưa backup";
+    ? t("data.backupAgo", { ago: formatRelativeDays(lastExport) })
+    : t("data.notBacked");
   els.backupReminder.classList.toggle("hidden", !shouldShowBackupReminder(meta));
   els.dataPlaceCount.textContent = String(places.length);
-  els.dataBackupAt.textContent = lastExport ? formatRelativeDays(lastExport) : "Chưa có";
+  els.dataBackupAt.textContent = lastExport ? formatRelativeDays(lastExport) : t("data.none");
   els.dataGistStatus.textContent = getGistStatusLabel(settings);
   const bytes = getAppStorageBytes();
   els.dataStorageUsage.textContent = formatBytes(bytes);
   const nearFull = bytes > 4_000_000;
   els.dataStorageUsage.classList.toggle("storage-warning", nearFull);
   els.dataStorageUsage.title = nearFull
-    ? "LocalStorage gần đầy. Nên xuất backup; ảnh đã được lưu riêng trong IndexedDB."
+    ? t("msg.storageWarn")
     : "";
   if (document.activeElement !== els.gistToken) els.gistToken.value = settings.token || "";
   if (document.activeElement !== els.gistId) els.gistId.value = settings.gistId || "";
@@ -3949,8 +3971,8 @@ function shouldShowBackupReminder(meta) {
 
 function formatRelativeDays(date) {
   const days = Math.floor((Date.now() - date.getTime()) / 86400000);
-  if (days <= 0) return "hôm nay";
-  return `${days} ngày trước`;
+  if (days <= 0) return t("time.today");
+  return t("time.daysAgo", { n: days });
 }
 
 function getGistSettings() {
@@ -3962,10 +3984,10 @@ function getGistSettings() {
 }
 
 function getGistStatusLabel(settings) {
-  if (!settings.token && !settings.gistId) return "Chưa cấu hình";
-  if (!settings.gistId) return "Chưa tạo Gist";
-  if (!settings.lastSyncAt) return "Đã cấu hình";
-  const direction = settings.lastSyncDirection === "pull" ? "Kéo về" : "Đẩy lên";
+  if (!settings.token && !settings.gistId) return t("data.notConfigured");
+  if (!settings.gistId) return t("data.gistNotCreated");
+  if (!settings.lastSyncAt) return t("data.gistConfigured");
+  const direction = settings.lastSyncDirection === "pull" ? t("data.pull") : t("data.push");
   return `${direction} ${formatRelativeDays(new Date(settings.lastSyncAt))}`;
 }
 
@@ -3996,7 +4018,7 @@ function saveGistSettings() {
     gistId: els.gistId.value.trim(),
   };
   localStorage.setItem(GIST_SETTINGS_KEY, JSON.stringify(settings));
-  showStatus("Đã lưu cấu hình Gist.");
+  showStatus(t("msg.gistSaved"));
 }
 
 async function pushGistBackup() {
@@ -4031,9 +4053,9 @@ async function pushGistBackup() {
     els.gistId.value = data.id;
     saveGistSyncState({ token: settings.token, gistId: data.id }, "push");
     markBackupExported();
-    showStatus("Đã đồng bộ lên GitHub Gist.");
+    showStatus(t("msg.gistPushed"));
   } catch {
-    showStatus("Không đẩy được lên Gist.", true);
+    showStatus(t("msg.gistPushFail"), true);
   } finally {
     setGistButtonsDisabled(false);
   }
@@ -4042,7 +4064,7 @@ async function pushGistBackup() {
 async function pullGistBackup() {
   const settings = readGistSettingsFromInputs();
   if (!settings.token || !settings.gistId) {
-    showStatus("Cần token và Gist ID để kéo dữ liệu.", true);
+    showStatus(t("msg.gistNeedCreds"), true);
     return;
   }
 
@@ -4060,11 +4082,11 @@ async function pullGistBackup() {
     if (!Array.isArray(imported)) throw new Error("Invalid backup");
     const normalized = imported.map(normalizePlace).filter(isValidPlace);
     if (normalized.length === 0) throw new Error("No valid places");
-    if (replaceAllPlaces(normalized, `Kéo ${normalized.length} quán từ Gist và thay dữ liệu hiện tại?`, "Đã kéo dữ liệu từ Gist.")) {
+    if (replaceAllPlaces(normalized, t("msg.gistPullConfirm", { n: normalized.length }), t("msg.gistPulled"))) {
       saveGistSyncState(settings, "pull");
     }
   } catch {
-    showStatus("Không kéo được dữ liệu từ Gist.", true);
+    showStatus(t("msg.gistPullFail"), true);
   } finally {
     setGistButtonsDisabled(false);
   }
@@ -4187,14 +4209,14 @@ function deleteCustomType(key) {
   syncFilterButtons();
   renderTypeManager();
   render();
-  showStatus(affected ? `Đã xóa loại, chuyển ${affected} quán về Cafe.` : "Đã xóa loại.");
+  showStatus(affected ? t("msg.typeDeletedReassign", { n: affected }) : t("msg.typeDeleted"));
 }
 
 function renderTypeManager() {
   if (!els.typeManagerList || !typeManagerOpen) return;
   const custom = TYPES.filter((type) => type.custom);
   if (custom.length === 0) {
-    els.typeManagerList.innerHTML = '<p class="stats-note">Chưa có loại tùy chỉnh nào.</p>';
+    els.typeManagerList.innerHTML = `<p class="stats-note">${escapeHtml(t("ui.noCustomType"))}</p>`;
     return;
   }
   els.typeManagerList.innerHTML = custom.map((type) => `
@@ -4204,7 +4226,7 @@ function renderTypeManager() {
         ${escapeHtml(type.label)}
       </span>
       <div class="tag-manager-actions">
-        <button class="icon-button" type="button" data-delete-type="${escapeAttr(type.key)}" title="Xóa loại" aria-label="Xóa loại">
+        <button class="icon-button" type="button" data-delete-type="${escapeAttr(type.key)}" title="${escapeAttr(t("ui.deleteType"))}" aria-label="${escapeAttr(t("ui.deleteType"))}">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
@@ -4317,13 +4339,13 @@ function setupInstallPrompt() {
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
     els.installAppBtn.classList.add("hidden");
-    showStatus("Đã cài Taste Map.");
+    showStatus(t("msg.installed"));
   });
 }
 
 async function installApp() {
   if (!deferredInstallPrompt) {
-    showStatus("Trình duyệt chưa sẵn sàng cài app.", true);
+    showStatus(t("msg.installNotReady"), true);
     return;
   }
 
@@ -4333,7 +4355,7 @@ async function installApp() {
     const choice = await deferredInstallPrompt.userChoice;
     if (choice.outcome === "accepted") {
       els.installAppBtn.classList.add("hidden");
-      showStatus("Đang cài app.");
+      showStatus(t("msg.installing"));
     }
     deferredInstallPrompt = null;
   } finally {
@@ -4376,8 +4398,8 @@ function showAppUpdateReady(worker) {
   waitingServiceWorker = worker;
   els.updateAppBtn.classList.remove("hidden");
   refreshIcons();
-  showStatus("Có bản mới.", false, {
-    label: "Cập nhật",
+  showStatus(t("msg.updateAvailable"), false, {
+    label: t("btn.update"),
     onClick: applyAppUpdate,
   });
 }
@@ -4402,7 +4424,7 @@ function handleSharedLaunch() {
   els.mapsLinkInput.value = sharedText;
   history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
   processGoogleMapsImportText(sharedText, { openSingle: true }).catch(() => {
-    showStatus("Không đọc được nội dung được chia sẻ.", true);
+    showStatus(t("msg.sharedReadFail"), true);
   });
 }
 

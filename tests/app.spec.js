@@ -499,3 +499,35 @@ test("language toggle switches static UI to english and persists", async ({ page
   await expect(page.locator("#langLabel")).toHaveText("EN");
   await expect(page.locator('[data-i18n="filters.title"]')).toHaveText("Filters");
 });
+
+test("detail panel shows photo albums by category", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const sample = "data:image/png;base64,iVBORw0KGgo=";
+    const place = normalizePlace({
+      id: "albp",
+      name: "Có ảnh",
+      lat: 10.78,
+      lng: 106.70,
+      images: [
+        { id: "f1", dataUrl: sample, category: "food" },
+        { id: "f2", dataUrl: sample, category: "food" },
+        { id: "m1", dataUrl: sample, category: "menu" },
+      ],
+    });
+    places.unshift(place);
+    savePlaces();
+    await persistImagesToDb();
+    selectPlace("albp", false);
+  });
+  await expect(page.locator(".detail-album")).toHaveCount(2);
+  await expect(page.locator(".detail-album-thumb")).toHaveCount(3);
+});
+
+test("dynamic strings translate to english", async ({ page }) => {
+  await page.goto("/");
+  await page.click("#langToggleBtn");
+  await page.locator(".place-item").first().click();
+  await expect(page.locator(".place-detail-panel")).toContainText("Directions");
+  await expect(page.locator(".place-detail-panel")).toContainText("Visited");
+});
