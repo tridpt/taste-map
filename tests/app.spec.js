@@ -531,3 +531,91 @@ test("dynamic strings translate to english", async ({ page }) => {
   await expect(page.locator(".place-detail-panel")).toContainText("Directions");
   await expect(page.locator(".place-detail-panel")).toContainText("Visited");
 });
+
+test("plain backup payload round-trips through normalizePlace", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => {
+    const payload = createBackupPayload();
+    const json = JSON.stringify(payload);
+    const parsed = JSON.parse(json);
+    const restored = parsed.places.map(normalizePlace).filter(isValidPlace);
+    return {
+      app: parsed.app,
+      hasPlaces: Array.isArray(parsed.places),
+      count: parsed.places.length,
+      restoredCount: restored.length,
+      firstName: restored[0].name,
+    };
+  });
+  expect(res.app).toBe("quan-quen-map");
+  expect(res.hasPlaces).toBe(true);
+  expect(res.restoredCount).toBe(res.count);
+  expect(res.firstName).toBeTruthy();
+});
+
+test("gist push uses mocked fetch and stores gist id", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(async () => {
+    const calls = [];
+    const realFetch = window.fetch;
+    window.fetch = async (url, opts) => {
+      calls.push({ url: String(url), method: opts?.method });
+      return { ok: true, json: async () => ({ id: "mock-gist-123" }) };
+    };
+    document.getElementById("gistToken").value = "tok_test";
+    document.getElementById("gistId").value = "";
+    await pushGistBackup();
+    window.fetch = realFetch;
+    return {
+      gistId: document.getElementById("gistId").value,
+      method: calls[0]?.method,
+      url: calls[0]?.url,
+    };
+  });
+  expect(res.gistId).toBe("mock-gist-123");
+  expect(res.method).toBe("POST");
+  expect(res.url).toContain("api.github.com/gists");
+});
+
+test("gist pull uses mocked fetch and replaces places", async ({ page }) => {
+  await page.goto("/");
+  page.on("dialog", (dialog) => dialog.accept());
+  const res = await page.evaluate(async () => {
+    const realFetch = window.fetch;
+    const backup = JSON.stringify({ app: "quan-quen-map", places: [
+      { id: "g1", name: "Gist Cafe", lat: 10.78, lng: 106.70, type: "cafe" },
+    ] });
+    window.fetch = async () => ({
+      ok: true,
+      json: async () => ({ files: { "taste-map-backup.json": { content: backup } } }),
+    });
+    document.getElementById("gistToken").value = "tok_test";
+    document.getElementById("gistId").value = "mock-gist-123";
+    await pullGistBackup();
+    window.fetch = realFetch;
+    return { count: places.length, name: places[0]?.name };
+  });
+  expect(res.count).toBe(1);
+  expect(res.name).toBe("Gist Cafe");
+});
+
+test("orphan images are pruned from indexeddb", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(async () => {
+    const sample = "data:image/png;base64,iVBORw0KGgo=";
+    await writeImageToDb("orphan-1", sample);
+    await writeImageToDb("orphan-2", sample);
+    const beforePersisted = persistedImageIds.has("orphan-1");
+    const removed = await pruneOrphanImages();
+    return {
+      beforePersisted,
+      removed,
+      stillThere: persistedImageIds.has("orphan-1"),
+      cacheCleared: !imageCache.has("orphan-1"),
+    };
+  });
+  expect(res.beforePersisted).toBe(true);
+  expect(res.removed).toBeGreaterThanOrEqual(2);
+  expect(res.stillThere).toBe(false);
+  expect(res.cacheCleared).toBe(true);
+});

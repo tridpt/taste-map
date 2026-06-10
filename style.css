@@ -1675,6 +1675,7 @@ body.pin-mode #map {
 
   .below-map-panels .panel {
     margin-bottom: 12px;
+    overflow: visible;
   }
 
   .below-map-panels .data-panel {

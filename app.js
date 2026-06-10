@@ -853,8 +853,36 @@ function persistImagesToDb() {
   return Promise.allSettled(writes);
 }
 
-function hydratePlaceImages() {
-  places.forEach((place) => {
+function deleteImageFromDb(id) {
+  return new Promise((resolve) => {
+    openImageDb()
+      .then((db) => {
+        const tx = db.transaction(IMAGE_STORE, "readwrite");
+        tx.objectStore(IMAGE_STORE).delete(id);
+        tx.oncomplete = () => {
+          persistedImageIds.delete(id);
+          imageCache.delete(id);
+          resolve(true);
+        };
+        tx.onerror = () => resolve(false);
+      })
+      .catch(() => resolve(false));
+  });
+}
+
+function pruneOrphanImages() {
+  const referenced = new Set();
+  places.forEach((place) => place.images.forEach((image) => referenced.add(image.id)));
+  const orphans = [...persistedImageIds].filter((id) => !referenced.has(id));
+  imageCache.forEach((_, id) => {
+    if (!referenced.has(id)) orphans.push(id);
+  });
+  const unique = [...new Set(orphans)];
+  if (unique.length === 0) return Promise.resolve(0);
+  return Promise.allSettled(unique.map(deleteImageFromDb)).then(() => unique.length);
+}
+
+function hydratePlaceImages() {  places.forEach((place) => {
     place.images.forEach((image) => {
       if (!image.dataUrl) {
         const cached = imageCache.get(image.id);
@@ -871,6 +899,7 @@ async function initImages() {
   await persistImagesToDb();
   savePlaces();
   render();
+  pruneOrphanImages();
 }
 
 
@@ -4024,7 +4053,7 @@ function saveGistSettings() {
 async function pushGistBackup() {
   const settings = readGistSettingsFromInputs();
   if (!settings.token) {
-    showStatus("Cần GitHub token có quyền gist.", true);
+    showStatus(t("msg.gistNeedToken"), true);
     return;
   }
 
