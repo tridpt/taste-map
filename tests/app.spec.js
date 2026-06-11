@@ -680,3 +680,27 @@ test("discover radius label updates with slider", async ({ page }) => {
   });
   await expect(page.locator("#discoverRadiusLabel")).toHaveText("7km");
 });
+
+test("paste coordinates splits into lat and lng fields", async ({ page }) => {
+  await page.goto("/");
+  const parsed = await page.evaluate(() => ({
+    plain: parseCoordsString("10.8781051, 106.8101286"),
+    parens: parseCoordsString("(10.878, 106.810)"),
+    semicolon: parseCoordsString("10.878; 106.810"),
+    bad: parseCoordsString("hello world"),
+    outOfRange: parseCoordsString("200, 999"),
+  }));
+  expect(parsed.plain).toEqual({ lat: 10.8781051, lng: 106.8101286 });
+  expect(parsed.parens.lat).toBeCloseTo(10.878);
+  expect(parsed.semicolon.lng).toBeCloseTo(106.810);
+  expect(parsed.bad).toBeNull();
+  expect(parsed.outOfRange).toBeNull();
+
+  await page.click("#newPlaceBtn");
+  await page.locator("#placeCoordsPaste").evaluate((el) => {
+    el.value = "10.8781051, 106.8101286";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect(page.locator("#placeLat")).toHaveValue("10.878105");
+  await expect(page.locator("#placeLng")).toHaveValue("106.810129");
+});

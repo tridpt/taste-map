@@ -319,6 +319,7 @@ function cacheElements() {
     "placeAddress",
     "placeLat",
     "placeLng",
+    "placeCoordsPaste",
     "lastVisit",
     "ratingFields",
     "addPhotoBtn",
@@ -657,7 +658,7 @@ function bindEvents() {
   });
 
   els.addPhotoBtn.addEventListener("click", () => els.placePhotosInput.click());
-  els.placePhotosInput.addEventListener("change", handlePhotoSelection);
+  els.placeCoordsPaste.addEventListener("input", handleCoordsPaste);  els.placePhotosInput.addEventListener("change", handlePhotoSelection);
   els.photoGallery.addEventListener("click", (event) => {
     const button = event.target.closest("[data-photo-id]");
     if (!button) return;
@@ -2339,6 +2340,33 @@ function markPlaceVisited(id) {
 function setFormCoordinates(lat, lng) {
   els.placeLat.value = Number(lat).toFixed(6);
   els.placeLng.value = Number(lng).toFixed(6);
+}
+
+function handleCoordsPaste() {
+  const raw = els.placeCoordsPaste.value.trim();
+  if (!raw) return;
+  const parsed = parseCoordsString(raw);
+  if (!parsed) {
+    showStatus(t("msg.coordsInvalid"), true);
+    return;
+  }
+  setFormCoordinates(parsed.lat, parsed.lng);
+  els.placeCoordsPaste.value = "";
+  showStatus(t("msg.coordsParsed"));
+}
+
+function parseCoordsString(raw) {
+  const text = String(raw)
+    .replace(/[()]/g, "")
+    .replace(/[;|]/g, ",")
+    .trim();
+  const match = text.match(/(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
 }
 
 function isEditorOpen() {

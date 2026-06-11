@@ -46,6 +46,7 @@ Quy mô: ~8.200 dòng code, 42 test Playwright tự động.
 ## 5. Quản lý quán (CRUD)
 - Thêm / sửa / xóa quán.
 - Trường: tên, loại, giá (4 mức), địa chỉ, tọa độ, ghi chú, tag riêng.
+- Ô "Dán tọa độ": dán chuỗi `lat, lng` (copy từ Google Maps) → tự tách vào ô Vĩ độ/Kinh độ.
 - Đánh giá 5 tiêu chí (ngon/yên tĩnh/ổ cắm/date/làm việc) bằng thanh trượt.
 - Giờ mở cửa theo ngày trong tuần + giờ mở/đóng (hỗ trợ qua đêm).
 - Lịch sử ghé: ngày + điểm + ghi chú.
