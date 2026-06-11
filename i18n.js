@@ -332,6 +332,7 @@ const I18N_STRINGS = {
     "discover.radiusTitle": "Bán kính khám phá",
     "msg.discoverAreaCount": "Hiện {n} quán quanh khu này. Bấm marker để lưu.",
     "msg.discoverAreaNone": "Không tìm thấy quán nào quanh khu này.",
+    "msg.discoverHint": "Mẹo: bấm \"Khám phá khu này\" để xem quán thật quanh nơi bạn sống.",
   },
   en: {
     "search.placeholder": "Search by name, area, notes",
@@ -664,5 +665,6 @@ const I18N_STRINGS = {
     "discover.radiusTitle": "Discovery radius",
     "msg.discoverAreaCount": "Showing {n} places around this area. Tap a marker to save.",
     "msg.discoverAreaNone": "No places found around this area.",
+    "msg.discoverHint": "Tip: tap \"Explore this area\" to see real places around where you live.",
   },
 };

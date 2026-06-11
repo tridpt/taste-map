@@ -6,6 +6,7 @@ const GIST_SETTINGS_KEY = "quan-quen-map:gist-settings:v1";
 const SIDEBAR_STATE_KEY = "quan-quen-map:sidebar-state:v1";
 const TYPES_KEY = "quan-quen-map:types:v1";
 const COLLECTIONS_KEY = "quan-quen-map:collections:v1";
+const DISCOVER_HINT_KEY = "quan-quen-map:discover-hint:v1";
 const IMAGE_DB_NAME = "quan-quen-map-images";
 const IMAGE_STORE = "images";
 const ITINERARIES_KEY = "quan-quen-map:itineraries:v1";
@@ -198,6 +199,22 @@ function init() {
   registerServiceWorker();
   handleSharedLaunch();
   initImages();
+  maybeShowDiscoverHint();
+}
+
+function maybeShowDiscoverHint() {
+  if (localStorage.getItem(DISCOVER_HINT_KEY)) return;
+  localStorage.setItem(DISCOVER_HINT_KEY, "1");
+  setTimeout(() => showStatus(t("msg.discoverHint"), false, {
+    label: t("discover.area"),
+    onClick: () => {
+      if (userLocation) {
+        discoverArea();
+      } else {
+        locateUser({ silent: true, onDone: () => discoverArea() });
+      }
+    },
+  }), 1200);
 }
 
 function cacheElements() {
@@ -418,7 +435,7 @@ function bindEvents() {
   els.resetFiltersBtn.addEventListener("click", resetFilters);
   els.placeForm.addEventListener("submit", savePlace);
   els.deletePlaceBtn.addEventListener("click", deleteCurrentPlace);
-  els.locateBtn.addEventListener("click", locateUser);
+  els.locateBtn.addEventListener("click", () => locateUser());
   els.themeToggleBtn.addEventListener("click", toggleTheme);
   els.langToggleBtn.addEventListener("click", toggleLang);
   els.openNowFilter.addEventListener("click", () => {
@@ -3504,9 +3521,11 @@ async function reverseLookup(lat, lng) {
   }
 }
 
-function locateUser() {
+function locateUser(options = {}) {
+  const { silent = false, onDone = null } = options;
   if (!navigator.geolocation || !map) {
-    showStatus(t("msg.locateUnsupported"), true);
+    if (!silent) showStatus(t("msg.locateUnsupported"), true);
+    if (onDone) onDone(false);
     return;
   }
 
@@ -3524,9 +3543,13 @@ function locateUser() {
         fillOpacity: 1,
       }).addTo(map);
       render();
-      showStatus(t("msg.locateUpdated"));
+      if (!silent) showStatus(t("msg.locateUpdated"));
+      if (onDone) onDone(true);
     },
-    () => showStatus(t("msg.locateFail"), true),
+    () => {
+      if (!silent) showStatus(t("msg.locateFail"), true);
+      if (onDone) onDone(false);
+    },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
   );
 }
