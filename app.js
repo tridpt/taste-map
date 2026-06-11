@@ -86,6 +86,7 @@ let lastFocusedBeforeEditor = null;
 let heatLayer = null;
 let heatmapMode = false;
 let discoverMarker = null;
+let discoverMarkers = [];
 const imageCache = new Map();
 const persistedImageIds = new Set();
 let imageDbPromise = null;
@@ -276,6 +277,10 @@ function cacheElements() {
     "importQueueList",
     "placeDetailMeta",
     "placeDetailContent",
+    "discoverType",
+    "lightbox",
+    "lightboxImage",
+    "lightboxClose",
     "statsSummary",
     "statsContent",
     "pinModeBtn",
@@ -584,6 +589,22 @@ function bindEvents() {
   });
 
   els.placeDetailContent.addEventListener("click", handlePlaceDetailAction);
+  els.placeDetailContent.addEventListener("click", (event) => {
+    const thumb = event.target.closest("[data-lightbox]");
+    if (thumb) openLightbox(thumb.dataset.lightbox);
+  });
+  els.placeDetailContent.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const thumb = event.target.closest("[data-lightbox]");
+    if (thumb) {
+      event.preventDefault();
+      openLightbox(thumb.dataset.lightbox);
+    }
+  });
+  els.lightboxClose.addEventListener("click", closeLightbox);
+  els.lightbox.addEventListener("click", (event) => {
+    if (event.target === els.lightbox) closeLightbox();
+  });
   els.statsContent.addEventListener("click", (event) => {
     const stale = event.target.closest("[data-stale-id]");
     if (stale) selectPlace(stale.dataset.staleId, true);
@@ -654,7 +675,8 @@ function bindEvents() {
     if (event.key === "Tab") trapEditorFocus(event);
     if (event.key === "Escape") {
       els.geoResults.classList.add("hidden");
-      if (pinMode) setPinMode(false);
+      if (isLightboxOpen()) closeLightbox();
+      else if (pinMode) setPinMode(false);
       else if (isEditorOpen()) closeEditor();
     }
   });
@@ -1671,6 +1693,25 @@ function renderPlaceDetail() {
   `;
 }
 
+function openLightbox(url) {
+  if (!url || !els.lightbox) return;
+  els.lightboxImage.src = url;
+  els.lightbox.classList.remove("hidden");
+  els.lightbox.setAttribute("aria-hidden", "false");
+  els.lightboxClose.focus();
+}
+
+function closeLightbox() {
+  if (!els.lightbox) return;
+  els.lightbox.classList.add("hidden");
+  els.lightbox.setAttribute("aria-hidden", "true");
+  els.lightboxImage.src = "";
+}
+
+function isLightboxOpen() {
+  return els.lightbox && !els.lightbox.classList.contains("hidden");
+}
+
 function renderDetailAlbums(place) {
   if (!place.images || place.images.length === 0) return "";
   const sections = PHOTO_CATEGORIES.map((cat) => {
@@ -1678,7 +1719,7 @@ function renderDetailAlbums(place) {
     if (photos.length === 0) return "";
     const thumbs = photos.map((img) => {
       const url = imageDataUrl(img);
-      return url ? `<img class="detail-album-thumb" src="${escapeAttr(url)}" alt="${escapeAttr(t(`album.${cat.key}`))}" loading="lazy" />` : "";
+      return url ? `<img class="detail-album-thumb" src="${escapeAttr(url)}" alt="${escapeAttr(t(`album.${cat.key}`))}" loading="lazy" data-lightbox="${escapeAttr(url)}" role="button" tabindex="0" />` : "";
     }).join("");
     if (!thumbs) return "";
     return `
@@ -2360,7 +2401,7 @@ async function pickRandomNearby() {
     const fresh = pois.filter((poi) => !isPoiAlreadySaved(poi));
     const pool = fresh.length ? fresh : pois;
     if (pool.length) {
-      showDiscoveredPlace(pool[Math.floor(Math.random() * pool.length)]);
+      showDiscoveredPlaces(pool.slice(0, 12), center);
       return;
     }
     showStatus(t("msg.nearbyNoNew"));
@@ -2383,7 +2424,8 @@ function fallbackRandomSaved() {
 }
 
 async function fetchNearbyPois(lat, lng, radius) {
-  const query = `[out:json][timeout:20];(node["amenity"~"cafe|restaurant|fast_food|bar|pub|ice_cream|bakery"]["name"](around:${radius},${lat},${lng}););out 80;`;
+  const amenities = discoverAmenityFilter(els.discoverType ? els.discoverType.value : "all");
+  const query = `[out:json][timeout:20];(node["amenity"~"${amenities}"]["name"](around:${radius},${lat},${lng}););out 80;`;
   const res = await fetch("https://overpass-api.de/api/interpreter", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -2391,6 +2433,21 @@ async function fetchNearbyPois(lat, lng, radius) {
   });
   if (!res.ok) throw new Error("overpass failed");
   return parseOverpassPois(await res.json());
+}
+
+function discoverAmenityFilter(category) {
+  switch (category) {
+    case "cafe":
+      return "cafe";
+    case "food":
+      return "restaurant|fast_food";
+    case "bar":
+      return "bar|pub";
+    case "dessert":
+      return "ice_cream|bakery";
+    default:
+      return "cafe|restaurant|fast_food|bar|pub|ice_cream|bakery";
+  }
 }
 
 function parseOverpassPois(data) {
@@ -2438,17 +2495,25 @@ function poiToDraft(poi) {
   };
 }
 
-function showDiscoveredPlace(poi) {
-  const draft = poiToDraft(poi);
+function clearDiscoverMarkers() {
+  discoverMarkers.forEach((marker) => marker.remove());
+  discoverMarkers = [];
   if (discoverMarker) {
     discoverMarker.remove();
     discoverMarker = null;
   }
-  if (map) {
-    map.setView([poi.lat, poi.lon], Math.max(map.getZoom(), 16));
-    discoverMarker = L.marker([poi.lat, poi.lon], { icon: createDiscoverIcon() }).addTo(map);
+}
+
+function showDiscoveredPlaces(pois, center) {
+  clearDiscoverMarkers();
+  if (!map || pois.length === 0) return;
+
+  const bounds = [];
+  pois.forEach((poi) => {
+    const draft = poiToDraft(poi);
+    const marker = L.marker([poi.lat, poi.lon], { icon: createDiscoverIcon() }).addTo(map);
     const distance = formatDistance(getDistanceFromUser({ lat: poi.lat, lng: poi.lon }));
-    discoverMarker.bindPopup(`
+    marker.bindPopup(`
       <div class="place-popup">
         <h3>${escapeHtml(draft.name)}</h3>
         <p>${escapeHtml(draft.address || t("ui.discoverNearby"))}</p>
@@ -2456,20 +2521,28 @@ function showDiscoveredPlace(poi) {
           <span class="type-badge" style="background:${escapeAttr(getType(draft.type).color)}">${escapeHtml(typeLabel(getType(draft.type)))}</span>
           ${distance ? `<span class="price-badge">${escapeHtml(distance)}</span>` : ""}
         </div>
+        <button class="discover-save-btn" type="button" data-discover-save="1">${escapeHtml(t("msg.discoverSave"))}</button>
       </div>
-    `).openPopup();
-    refreshIcons();
-  }
-  showStatus(t("msg.discoverFound", { name: draft.name }), false, {
-    label: t("msg.discoverSave"),
-    onClick: () => {
-      if (discoverMarker) {
-        discoverMarker.remove();
-        discoverMarker = null;
+    `);
+    marker.on("popupopen", () => {
+      const btn = document.querySelector("[data-discover-save]");
+      if (btn) {
+        btn.addEventListener("click", () => {
+          clearDiscoverMarkers();
+          openEditor(draft);
+        }, { once: true });
       }
-      openEditor(draft);
-    },
+    });
+    discoverMarkers.push(marker);
+    bounds.push([poi.lat, poi.lon]);
   });
+
+  if (center) bounds.push([center.lat, center.lng]);
+  if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+  }
+  refreshIcons();
+  showStatus(t("msg.discoverCount", { n: pois.length }));
 }
 
 function createDiscoverIcon() {

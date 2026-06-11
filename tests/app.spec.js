@@ -619,3 +619,37 @@ test("orphan images are pruned from indexeddb", async ({ page }) => {
   expect(res.stillThere).toBe(false);
   expect(res.cacheCleared).toBe(true);
 });
+
+test("lightbox opens from detail album thumbnail and closes on escape", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const sample = "data:image/png;base64,iVBORw0KGgo=";
+    const place = normalizePlace({ id: "lbp", name: "Có ảnh", lat: 10.78, lng: 106.70, images: [{ id: "lb1", dataUrl: sample, category: "food" }] });
+    places.unshift(place);
+    savePlaces();
+    await persistImagesToDb();
+    selectPlace("lbp", false);
+  });
+  await page.locator(".detail-album-thumb").first().click();
+  await expect(page.locator("#lightbox")).not.toHaveClass(/hidden/);
+  await expect(page.locator("#lightbox")).toHaveAttribute("aria-hidden", "false");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#lightbox")).toHaveClass(/hidden/);
+});
+
+test("discover amenity filter maps categories to overpass query", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(() => ({
+    all: discoverAmenityFilter("all"),
+    cafe: discoverAmenityFilter("cafe"),
+    food: discoverAmenityFilter("food"),
+    bar: discoverAmenityFilter("bar"),
+    dessert: discoverAmenityFilter("dessert"),
+  }));
+  expect(res.cafe).toBe("cafe");
+  expect(res.food).toBe("restaurant|fast_food");
+  expect(res.bar).toBe("bar|pub");
+  expect(res.dessert).toBe("ice_cream|bakery");
+  expect(res.all).toContain("cafe");
+  expect(res.all).toContain("bakery");
+});

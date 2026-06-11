@@ -2516,3 +2516,74 @@ body.pin-mode #map {
   border-radius: var(--radius);
   border: 1px solid var(--line);
 }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 12, 10, 0.86);
+  backdrop-filter: blur(4px);
+}
+
+.lightbox.hidden {
+  display: none;
+}
+
+.lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(17, 25, 22, 0.7);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.lightbox-close:hover {
+  background: rgba(17, 25, 22, 0.95);
+}
+
+.detail-album-thumb {
+  cursor: zoom-in;
+}
+
+.discover-type {
+  height: 38px;
+  min-width: 0;
+  pointer-events: auto;
+  color: #fff;
+  background: rgba(17, 25, 22, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  box-shadow: var(--shadow);
+}
+
+.discover-save-btn {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 32px;
+  color: #fff;
+  background: var(--teal);
+  border-radius: var(--radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.discover-save-btn:hover {
+  background: var(--teal-dark);
+}
