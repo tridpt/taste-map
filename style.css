@@ -2587,3 +2587,28 @@ body.pin-mode #map {
 .discover-save-btn:hover {
   background: var(--teal-dark);
 }
+
+.discover-radius {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 10px;
+  pointer-events: auto;
+  color: #fff;
+  background: rgba(17, 25, 22, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.discover-radius input[type="range"] {
+  width: 80px;
+  accent-color: var(--teal);
+}
+
+.discover-radius-label {
+  min-width: 30px;
+  font-size: 12px;
+  font-weight: 700;
+}

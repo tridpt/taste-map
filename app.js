@@ -278,6 +278,9 @@ function cacheElements() {
     "placeDetailMeta",
     "placeDetailContent",
     "discoverType",
+    "discoverAreaBtn",
+    "discoverRadius",
+    "discoverRadiusLabel",
     "lightbox",
     "lightboxImage",
     "lightboxClose",
@@ -514,6 +517,10 @@ function bindEvents() {
   els.importQueueList.addEventListener("click", handleImportQueueClick);
   els.pinModeBtn.addEventListener("click", () => setPinMode(!pinMode));
   els.randomNearbyBtn.addEventListener("click", pickRandomNearby);
+  els.discoverAreaBtn.addEventListener("click", discoverArea);
+  els.discoverRadius.addEventListener("input", () => {
+    els.discoverRadiusLabel.textContent = `${els.discoverRadius.value}km`;
+  });
   els.heatmapBtn.addEventListener("click", toggleHeatmap);
 
   els.typeFilters.addEventListener("click", (event) => {
@@ -2397,11 +2404,12 @@ async function pickRandomNearby() {
 
   showStatus(t("msg.nearbySearching"));
   try {
-    const pois = await fetchNearbyPois(center.lat, center.lng, RANDOM_NEARBY_RADIUS);
+    const radiusKm = Number(els.discoverRadius ? els.discoverRadius.value : 3) || 3;
+    const pois = await fetchNearbyPois(center.lat, center.lng, radiusKm * 1000, 120);
     const fresh = pois.filter((poi) => !isPoiAlreadySaved(poi));
     const pool = fresh.length ? fresh : pois;
     if (pool.length) {
-      showDiscoveredPlaces(pool.slice(0, 12), center);
+      showDiscoveredPlaces(pool.slice(0, 40), center);
       return;
     }
     showStatus(t("msg.nearbyNoNew"));
@@ -2423,9 +2431,9 @@ function fallbackRandomSaved() {
   showStatus(t("msg.nearbyFromList", { name: place.name, dist: distance ? ` · ${distance}` : "" }));
 }
 
-async function fetchNearbyPois(lat, lng, radius) {
+async function fetchNearbyPois(lat, lng, radius, limit = 80) {
   const amenities = discoverAmenityFilter(els.discoverType ? els.discoverType.value : "all");
-  const query = `[out:json][timeout:20];(node["amenity"~"${amenities}"]["name"](around:${radius},${lat},${lng}););out 80;`;
+  const query = `[out:json][timeout:25];(node["amenity"~"${amenities}"]["name"](around:${radius},${lat},${lng}););out ${limit};`;
   const res = await fetch("https://overpass-api.de/api/interpreter", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -2433,6 +2441,29 @@ async function fetchNearbyPois(lat, lng, radius) {
   });
   if (!res.ok) throw new Error("overpass failed");
   return parseOverpassPois(await res.json());
+}
+
+async function discoverArea() {
+  const center = (map && map.getCenter()) || userLocation;
+  if (!center) {
+    showStatus(t("msg.nearbyNoCenter"), true);
+    return;
+  }
+  const radiusKm = Number(els.discoverRadius ? els.discoverRadius.value : 3) || 3;
+  showStatus(t("msg.nearbySearching"));
+  try {
+    els.discoverAreaBtn.disabled = true;
+    const pois = await fetchNearbyPois(center.lat, center.lng, radiusKm * 1000, 200);
+    if (pois.length === 0) {
+      showStatus(t("msg.discoverAreaNone"), true);
+      return;
+    }
+    showDiscoveredPlaces(pois, null, "area");
+  } catch {
+    showStatus(t("msg.nearbyNetFail"), true);
+  } finally {
+    els.discoverAreaBtn.disabled = false;
+  }
 }
 
 function discoverAmenityFilter(category) {
@@ -2504,7 +2535,7 @@ function clearDiscoverMarkers() {
   }
 }
 
-function showDiscoveredPlaces(pois, center) {
+function showDiscoveredPlaces(pois, center, mode = "nearby") {
   clearDiscoverMarkers();
   if (!map || pois.length === 0) return;
 
@@ -2538,11 +2569,13 @@ function showDiscoveredPlaces(pois, center) {
   });
 
   if (center) bounds.push([center.lat, center.lng]);
-  if (bounds.length > 1) {
+  if (mode === "nearby" && bounds.length > 1) {
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
   }
   refreshIcons();
-  showStatus(t("msg.discoverCount", { n: pois.length }));
+  showStatus(mode === "area"
+    ? t("msg.discoverAreaCount", { n: pois.length })
+    : t("msg.discoverCount", { n: pois.length }));
 }
 
 function createDiscoverIcon() {

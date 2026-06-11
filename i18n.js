@@ -327,6 +327,11 @@ const I18N_STRINGS = {
     "discover.bar": "Bar / pub",
     "discover.dessert": "Ngọt / bánh",
     "msg.discoverCount": "Tìm thấy {n} quán gần bạn. Bấm marker để xem và lưu.",
+    "discover.area": "Khám phá khu này",
+    "discover.areaTitle": "Khám phá quán quanh khu vực đang xem",
+    "discover.radiusTitle": "Bán kính khám phá",
+    "msg.discoverAreaCount": "Hiện {n} quán quanh khu này. Bấm marker để lưu.",
+    "msg.discoverAreaNone": "Không tìm thấy quán nào quanh khu này.",
   },
   en: {
     "search.placeholder": "Search by name, area, notes",
@@ -654,5 +659,10 @@ const I18N_STRINGS = {
     "discover.bar": "Bar / pub",
     "discover.dessert": "Dessert / bakery",
     "msg.discoverCount": "Found {n} places near you. Tap a marker to view and save.",
+    "discover.area": "Explore this area",
+    "discover.areaTitle": "Explore places around the current view",
+    "discover.radiusTitle": "Discovery radius",
+    "msg.discoverAreaCount": "Showing {n} places around this area. Tap a marker to save.",
+    "msg.discoverAreaNone": "No places found around this area.",
   },
 };

@@ -241,6 +241,15 @@
               <option value="bar" data-i18n="discover.bar">Bar / pub</option>
               <option value="dessert" data-i18n="discover.dessert">Ngọt / bánh</option>
             </select>
+            <button id="discoverAreaBtn" class="ghost-button dark" type="button" data-i18n-title="discover.areaTitle" title="Khám phá quán quanh khu này">
+              <i data-lucide="compass"></i>
+              <span data-i18n="discover.area">Khám phá khu này</span>
+            </button>
+            <label class="discover-radius" data-i18n-title="discover.radiusTitle" title="Bán kính khám phá">
+              <i data-lucide="circle-dot" aria-hidden="true"></i>
+              <input id="discoverRadius" type="range" min="1" max="10" step="1" value="3" aria-label="Bán kính khám phá (km)" />
+              <span id="discoverRadiusLabel" class="discover-radius-label">3km</span>
+            </label>
             <button id="heatmapBtn" class="ghost-button dark" type="button" aria-pressed="false" data-i18n-title="map.heatmapTitle" title="Bản đồ nhiệt mật độ quán">
               <i data-lucide="flame"></i>
               <span data-i18n="map.heatmap">Heatmap</span>

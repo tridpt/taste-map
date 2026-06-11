@@ -653,3 +653,30 @@ test("discover amenity filter maps categories to overpass query", async ({ page 
   expect(res.all).toContain("cafe");
   expect(res.all).toContain("bakery");
 });
+
+test("explore area shows all discovered markers via mocked overpass", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(async () => {
+    const realFetch = window.fetch;
+    const elements = [];
+    for (let i = 0; i < 25; i += 1) {
+      elements.push({ lat: 10.78 + i * 0.001, lon: 106.70 + i * 0.001, tags: { name: `Quán ${i}`, amenity: "cafe" } });
+    }
+    window.fetch = async () => ({ ok: true, json: async () => ({ elements }) });
+    document.getElementById("discoverRadius").value = "5";
+    await discoverArea();
+    window.fetch = realFetch;
+    return { markers: discoverMarkers.length };
+  });
+  expect(res.markers).toBe(25);
+  await expect(page.locator(".discover-div-marker")).toHaveCount(25);
+});
+
+test("discover radius label updates with slider", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#discoverRadius").evaluate((el) => {
+    el.value = "7";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect(page.locator("#discoverRadiusLabel")).toHaveText("7km");
+});
