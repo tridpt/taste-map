@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_VERSION = "taste-map-v34";
+const CACHE_VERSION = "taste-map-v35";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const TILE_CACHE = `${CACHE_VERSION}:tiles`;
@@ -20,7 +20,7 @@ const APP_SHELL = [
   "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css",
   "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js",
   "https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js",
-  "https://unpkg.com/lucide@latest/dist/umd/lucide.min.js",
+  "https://unpkg.com/lucide@1.17.0/dist/umd/lucide.min.js",
 ];
 
 self.addEventListener("install", (event) => {

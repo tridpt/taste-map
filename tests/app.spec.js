@@ -704,3 +704,35 @@ test("paste coordinates splits into lat and lng fields", async ({ page }) => {
   await expect(page.locator("#placeLat")).toHaveValue("10.878105");
   await expect(page.locator("#placeLng")).toHaveValue("106.810129");
 });
+
+test("lucide is pinned to a fixed version (not latest)", async ({ page }) => {
+  await page.goto("/");
+  const srcs = await page.evaluate(() =>
+    [...document.querySelectorAll("script[src]")].map((s) => s.getAttribute("src")));
+  const lucide = srcs.find((s) => s.includes("lucide"));
+  expect(lucide).toBeTruthy();
+  expect(lucide).not.toContain("@latest");
+  expect(lucide).toMatch(/lucide@\d+\.\d+\.\d+/);
+});
+
+test("fetchWithRetry retries on 429 then surfaces a rate-limit error", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(async () => {
+    let calls = 0;
+    const realFetch = window.fetch;
+    window.fetch = async () => {
+      calls += 1;
+      return { ok: false, status: 429, json: async () => ({}) };
+    };
+    let rateLimited = false;
+    try {
+      await fetchWithRetry("https://overpass-api.de/api/interpreter", {}, 2);
+    } catch (error) {
+      rateLimited = Boolean(error && error.rateLimited);
+    }
+    window.fetch = realFetch;
+    return { calls, rateLimited };
+  });
+  expect(res.calls).toBe(2);
+  expect(res.rateLimited).toBe(true);
+});

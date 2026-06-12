@@ -2458,8 +2458,8 @@ async function pickRandomNearby() {
       return;
     }
     showStatus(t("msg.nearbyNoNew"));
-  } catch {
-    showStatus(t("msg.nearbyNetFail"), true);
+  } catch (error) {
+    showStatus(error && error.rateLimited ? t("msg.rateLimited") : t("msg.nearbyNetFail"), true);
   }
   fallbackRandomSaved();
 }
@@ -2476,10 +2476,38 @@ function fallbackRandomSaved() {
   showStatus(t("msg.nearbyFromList", { name: place.name, dist: distance ? ` · ${distance}` : "" }));
 }
 
+function delayMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, opts = {}, attempts = 2) {
+  let lastError;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const res = await fetch(url, opts);
+      if (res.status === 429 || res.status === 503) {
+        if (i < attempts - 1) {
+          await delayMs(900 * (i + 1));
+          continue;
+        }
+        const err = new Error("rate limited");
+        err.rateLimited = true;
+        throw err;
+      }
+      return res;
+    } catch (error) {
+      lastError = error;
+      if (error && error.rateLimited) throw error;
+      if (i < attempts - 1) await delayMs(500);
+    }
+  }
+  throw lastError || new Error("fetch failed");
+}
+
 async function fetchNearbyPois(lat, lng, radius, limit = 80) {
   const amenities = discoverAmenityFilter(els.discoverType ? els.discoverType.value : "all");
   const query = `[out:json][timeout:25];(node["amenity"~"${amenities}"]["name"](around:${radius},${lat},${lng}););out ${limit};`;
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
+  const res = await fetchWithRetry("https://overpass-api.de/api/interpreter", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: `data=${encodeURIComponent(query)}`,
@@ -2504,8 +2532,8 @@ async function discoverArea() {
       return;
     }
     showDiscoveredPlaces(pois, null, "area");
-  } catch {
-    showStatus(t("msg.nearbyNetFail"), true);
+  } catch (error) {
+    showStatus(error && error.rateLimited ? t("msg.rateLimited") : t("msg.nearbyNetFail"), true);
   } finally {
     els.discoverAreaBtn.disabled = false;
   }
@@ -2849,7 +2877,7 @@ async function fetchOsrmRoute(stops, key) {
   try {
     const coords = stops.map((place) => `${place.lng},${place.lat}`).join(";");
     const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url);
     if (!res.ok) throw new Error("route failed");
     const parsed = parseOsrmRoute(await res.json(), key);
     if (!parsed) throw new Error("no route");
