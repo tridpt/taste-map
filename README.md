@@ -1,6 +1,35 @@
-# Quán quen
+# Quán quen 🗺️
 
-Web app tĩnh để lưu quán ăn/cafe theo gu cá nhân: ngon, yên tĩnh, có ổ cắm, đi date, làm việc. Giao diện song ngữ Tiếng Việt / English (nút đổi ngôn ngữ VI/EN trên thanh công cụ, dịch cả nhãn tĩnh lẫn thông báo động, lưu lựa chọn trong trình duyệt).
+[![CI](https://github.com/tridpt/taste-map/actions/workflows/ci.yml/badge.svg)](https://github.com/tridpt/taste-map/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+> **Sổ tay quán ăn/cafe trên bản đồ, theo gu cá nhân.** Lưu lại những quán quen của bạn — ngon, yên tĩnh, có ổ cắm, hợp đi date, hợp làm việc — rồi để app gợi ý "hôm nay đi đâu", chỉ đường, lên lịch trình và khám phá quán mới quanh bạn.
+
+**Dành cho ai:** người hay đi cafe/quán ăn, muốn một nơi riêng tư (dữ liệu nằm trong trình duyệt của bạn, không tài khoản, không server) để ghi lại và tra cứu quán theo cảm nhận của chính mình — thứ mà Google Maps không làm được.
+
+🔗 **Demo:** https://tridpt.github.io/taste-map/ *(cần bật GitHub Pages cho repo)*
+
+## Ảnh chụp
+
+| Giao diện sáng | Chi tiết quán | Giao diện tối |
+|---|---|---|
+| ![Sáng](screenshots/home-light.png) | ![Chi tiết](screenshots/detail.png) | ![Tối](screenshots/home-dark.png) |
+
+## Tài liệu
+
+| File | Nội dung |
+|---|---|
+| [FEATURES.md](FEATURES.md) | Danh sách đầy đủ tính năng |
+| [DOCUMENTATION.md](DOCUMENTATION.md) | Tài liệu kỹ thuật: kiến trúc, mô hình dữ liệu, hàm chính, mở rộng |
+| [TEST_CHECKLIST.md](TEST_CHECKLIST.md) | Checklist test nhanh |
+| [HUONG_DAN_TEST.md](HUONG_DAN_TEST.md) | Hướng dẫn test thủ công từng bước |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Quy ước đóng góp |
+
+## Công nghệ
+
+Vanilla JS (không framework, không bundler) · Leaflet + markercluster + heat · Lucide icons · PWA (service worker) · lưu trữ localStorage + IndexedDB · song ngữ VI/EN. Dữ liệu quán thật từ OpenStreetMap (Overpass/Nominatim), định tuyến qua OSRM.
+
+**Trình duyệt hỗ trợ:** Chrome / Edge / Firefox / Safari bản mới (cần hỗ trợ ES2020, IndexedDB, Service Worker).
 
 ## Chạy local
 

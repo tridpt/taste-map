@@ -17,6 +17,27 @@ Tài liệu này mô tả kiến trúc, cấu trúc mã, mô hình dữ liệu, 
 
 **Quy mô**: ~8.200 dòng (app.js ~4.200, style.css ~2.300, i18n.js ~660, index.html ~560), 45 test Playwright.
 
+### Sơ đồ kiến trúc (mức cao)
+
+```
+                 ┌─────────────────────────── Trình duyệt ───────────────────────────┐
+                 │                                                                    │
+   index.html ──▶│  DOM tĩnh + data-i18n                                              │
+   i18n.js ─────▶│  I18N_STRINGS (vi/en) ──▶ t()                                      │
+   app.js ──────▶│  init() ─▶ state ─▶ render() ─▶ DOM/Leaflet                        │
+   style.css ───▶│  theme (light/dark) + responsive                                  │
+                 │        │            │              │                               │
+                 │        ▼            ▼              ▼                               │
+                 │  localStorage   IndexedDB     Leaflet map                          │
+                 │  (quán, cấu hình) (ảnh)       (tiles, markers, cluster, heat)       │
+                 └────────┬──────────────────────────┬────────────────────────────────┘
+                          │                           │ (fetch, có fetchWithRetry)
+                          ▼                           ▼
+                   sw.js (PWA cache)        Nominatim · Overpass · OSRM · GitHub Gist
+```
+
+
+
 ---
 
 ## 2. Công nghệ & phụ thuộc
