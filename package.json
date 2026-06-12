@@ -5,12 +5,15 @@
   "scripts": {
     "serve": "http-server . -a 127.0.0.1 -p 5178 -c-1",
     "screenshots": "node scripts/screenshots.js",
+    "gif": "node scripts/gif.js",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "check": "node scripts/check-encoding.js && node --check app.js && node --check i18n.js && node --check sw.js && node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')\""
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "http-server": "^14.1.1"
+    "gifenc": "^1.0.3",
+    "http-server": "^14.1.1",
+    "pngjs": "^7.0.0"
   }
 }

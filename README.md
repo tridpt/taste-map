@@ -9,6 +9,10 @@
 
 🔗 **Demo:** https://tridpt.github.io/taste-map/ *(cần bật GitHub Pages cho repo)*
 
+## Demo
+
+![Demo Quán quen](screenshots/demo.gif)
+
 ## Ảnh chụp
 
 | Giao diện sáng | Chi tiết quán | Giao diện tối |

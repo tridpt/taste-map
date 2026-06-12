@@ -23,10 +23,11 @@ npm test          # Playwright (tự khởi động server)
 - **Tài liệu:** cập nhật `README.md` / `FEATURES.md` khi thêm tính năng người dùng thấy được.
 - **Commit:** mô tả ngắn gọn, theo từng thay đổi (ví dụ: "Add explore-this-area discovery").
 
-## Chụp lại ảnh README
+## Chụp lại ảnh / GIF cho README
 ```powershell
 npm run serve            # cửa sổ 1
-npm run screenshots      # cửa sổ 2 (lưu vào screenshots/)
+npm run screenshots      # cửa sổ 2 — ảnh tĩnh vào screenshots/
+npm run gif              # cửa sổ 2 — GIF demo vào screenshots/demo.gif
 ```
 
 ## Phong cách code
