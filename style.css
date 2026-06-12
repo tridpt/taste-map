@@ -2612,3 +2612,55 @@ body.pin-mode #map {
   font-size: 12px;
   font-weight: 700;
 }
+
+.app-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 12, 10, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.app-modal.hidden {
+  display: none;
+}
+
+.app-modal-box {
+  width: min(380px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.app-modal-title {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.app-modal-input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.app-modal-input.hidden {
+  display: none;
+}
+
+.app-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

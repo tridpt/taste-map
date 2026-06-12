@@ -88,6 +88,7 @@ let heatLayer = null;
 let heatmapMode = false;
 let discoverMarker = null;
 let discoverMarkers = [];
+let modalResolve = null;
 const imageCache = new Map();
 const persistedImageIds = new Set();
 let imageDbPromise = null;
@@ -301,6 +302,11 @@ function cacheElements() {
     "lightbox",
     "lightboxImage",
     "lightboxClose",
+    "appModal",
+    "appModalTitle",
+    "appModalInput",
+    "appModalOk",
+    "appModalCancel",
     "statsSummary",
     "statsContent",
     "pinModeBtn",
@@ -493,10 +499,10 @@ function bindEvents() {
       showStatus(t("msg.typeInvalid"), true);
     }
   });
-  els.typeManagerList.addEventListener("click", (event) => {
+  els.typeManagerList.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-delete-type]");
     if (!button) return;
-    if (!window.confirm(t("msg.confirmDeleteType"))) return;
+    if (!(await showConfirm(t("msg.confirmDeleteType")))) return;
     deleteCustomType(button.dataset.deleteType);
   });
   els.exportBtn.addEventListener("click", exportEncryptedBackup);
@@ -630,6 +636,17 @@ function bindEvents() {
   els.lightbox.addEventListener("click", (event) => {
     if (event.target === els.lightbox) closeLightbox();
   });
+  els.appModalOk.addEventListener("click", () => resolveAppModal({ ok: true, value: els.appModalInput.value }));
+  els.appModalCancel.addEventListener("click", () => resolveAppModal({ ok: false, value: "" }));
+  els.appModal.addEventListener("click", (event) => {
+    if (event.target === els.appModal) resolveAppModal({ ok: false, value: "" });
+  });
+  els.appModalInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      resolveAppModal({ ok: true, value: els.appModalInput.value });
+    }
+  });
   els.statsContent.addEventListener("click", (event) => {
     const stale = event.target.closest("[data-stale-id]");
     if (stale) selectPlace(stale.dataset.staleId, true);
@@ -700,7 +717,8 @@ function bindEvents() {
     if (event.key === "Tab") trapEditorFocus(event);
     if (event.key === "Escape") {
       els.geoResults.classList.add("hidden");
-      if (isLightboxOpen()) closeLightbox();
+      if (isAppModalOpen()) resolveAppModal({ ok: false, value: "" });
+      else if (isLightboxOpen()) closeLightbox();
       else if (pinMode) setPinMode(false);
       else if (isEditorOpen()) closeEditor();
     }
@@ -1054,14 +1072,17 @@ function handleTagManagerAction(event) {
   if (!button) return;
   const tag = button.dataset.tag;
   if (button.dataset.tagAction === "rename") {
-    const next = window.prompt(t("prompt.renameTag", { tag }), tag);
-    if (next === null) return;
-    const affected = renameTag(tag, next);
-    showStatus(affected ? t("msg.tagRenamed", { n: affected }) : t("msg.tagInvalid"), !affected);
+    showPrompt(t("prompt.renameTag", { tag }), { value: tag }).then((next) => {
+      if (next === null) return;
+      const affected = renameTag(tag, next);
+      showStatus(affected ? t("msg.tagRenamed", { n: affected }) : t("msg.tagInvalid"), !affected);
+    });
   } else if (button.dataset.tagAction === "delete") {
-    if (!window.confirm(t("prompt.confirmDeleteTag", { tag }))) return;
-    const affected = deleteTag(tag);
-    showStatus(t("msg.tagDeleted", { n: affected }));
+    showConfirm(t("prompt.confirmDeleteTag", { tag })).then((ok) => {
+      if (!ok) return;
+      const affected = deleteTag(tag);
+      showStatus(t("msg.tagDeleted", { n: affected }));
+    });
   }
 }
 
@@ -1737,6 +1758,47 @@ function isLightboxOpen() {
   return els.lightbox && !els.lightbox.classList.contains("hidden");
 }
 
+function openAppModal(options) {
+  const { title, input = false, password = false, value = "", cancelable = true } = options;
+  return new Promise((resolve) => {
+    if (modalResolve) resolveAppModal({ ok: false, value: "" });
+    modalResolve = resolve;
+    els.appModalTitle.textContent = title;
+    els.appModalInput.classList.toggle("hidden", !input);
+    els.appModalInput.type = password ? "password" : "text";
+    els.appModalInput.value = value;
+    els.appModalCancel.classList.toggle("hidden", !cancelable);
+    els.appModalCancel.textContent = t("modal.cancel");
+    els.appModalOk.textContent = t("modal.ok");
+    els.appModal.classList.remove("hidden");
+    els.appModal.setAttribute("aria-hidden", "false");
+    setTimeout(() => (input ? els.appModalInput : els.appModalOk).focus(), 30);
+  });
+}
+
+function resolveAppModal(result) {
+  if (!modalResolve) return;
+  const resolve = modalResolve;
+  modalResolve = null;
+  els.appModal.classList.add("hidden");
+  els.appModal.setAttribute("aria-hidden", "true");
+  resolve(result);
+}
+
+function isAppModalOpen() {
+  return els.appModal && !els.appModal.classList.contains("hidden");
+}
+
+async function showPrompt(title, options = {}) {
+  const result = await openAppModal({ title, input: true, ...options });
+  return result.ok ? result.value.trim() : null;
+}
+
+async function showConfirm(title) {
+  const result = await openAppModal({ title, input: false });
+  return result.ok;
+}
+
 function renderDetailAlbums(place) {
   if (!place.images || place.images.length === 0) return "";
   const sections = PHOTO_CATEGORIES.map((cat) => {
@@ -2263,12 +2325,12 @@ function savePlace(event) {
   showUndoStatus(t("msg.placeSaved"));
 }
 
-function deleteCurrentPlace() {
+async function deleteCurrentPlace() {
   const id = els.placeId.value;
   if (!id) return;
   const place = getPlace(id);
   if (!place) return;
-  if (!confirm(t("msg.confirmDeletePlace", { name: place.name }))) return;
+  if (!(await showConfirm(t("msg.confirmDeletePlace", { name: place.name })))) return;
 
   pushUndoSnapshot("xóa quán");
   places = places.filter((item) => item.id !== id);
@@ -2957,12 +3019,12 @@ function saveSavedItineraries() {
   localStorage.setItem(ITINERARIES_KEY, JSON.stringify(savedItineraries));
 }
 
-function saveCurrentItinerary() {
+async function saveCurrentItinerary() {
   if (itinerary.length === 0) {
     showStatus(t("msg.itineraryEmpty"), true);
     return;
   }
-  const name = window.prompt(t("prompt.itineraryName"));
+  const name = await showPrompt(t("prompt.itineraryName"));
   if (name === null) return;
   const clean = String(name).trim().slice(0, 60);
   if (!clean) {
@@ -3020,8 +3082,8 @@ function createCollection(name) {
   return collection;
 }
 
-function promptNewCollection() {
-  const name = window.prompt(t("prompt.collectionName"));
+async function promptNewCollection() {
+  const name = await showPrompt(t("prompt.collectionName"));
   if (name === null) return;
   const collection = createCollection(name);
   if (collection) showStatus(t("msg.collectionCreated", { name: collection.name }));
@@ -3626,7 +3688,7 @@ function exportPlainBackup() {
 }
 
 async function exportEncryptedBackup() {
-  const password = prompt("Đặt mật khẩu cho file backup mã hóa:");
+  const password = await showPrompt(t("prompt.encryptPassword"), { password: true });
   if (password === null) return;
   if (password.length < 8) {
     showStatus(t("msg.backupPwShort"), true);
@@ -3656,14 +3718,14 @@ async function importPlaces() {
     if (!Array.isArray(imported)) throw new Error("Invalid backup");
     const normalized = imported.map(normalizePlace).filter(isValidPlace);
     if (normalized.length === 0) throw new Error("No valid places");
-    replaceAllPlaces(normalized, t("msg.importReplaceConfirm", { n: normalized.length }), t("msg.importDone"));
+    await replaceAllPlaces(normalized, t("msg.importReplaceConfirm", { n: normalized.length }), t("msg.importDone"));
   } catch {
     showStatus(t("msg.importInvalidFile"), true);
   }
 }
 
 async function decryptBackupPrompt(payload) {
-  const password = prompt("Nhập mật khẩu file backup:");
+  const password = await showPrompt(t("prompt.decryptPassword"), { password: true });
   if (password === null) return null;
   return decryptBackup(payload, password);
 }
@@ -3898,8 +3960,8 @@ function downloadText(text, filename, type) {
   URL.revokeObjectURL(url);
 }
 
-function replaceAllPlaces(nextPlaces, confirmMessage, successMessage) {
-  if (confirmMessage && !confirm(confirmMessage)) return false;
+async function replaceAllPlaces(nextPlaces, confirmMessage, successMessage) {
+  if (confirmMessage && !(await showConfirm(confirmMessage))) return false;
   pushUndoSnapshot("thay dữ liệu");
   places = nextPlaces;
   selectedId = null;
@@ -4296,7 +4358,7 @@ async function pullGistBackup() {
     if (!Array.isArray(imported)) throw new Error("Invalid backup");
     const normalized = imported.map(normalizePlace).filter(isValidPlace);
     if (normalized.length === 0) throw new Error("No valid places");
-    if (replaceAllPlaces(normalized, t("msg.gistPullConfirm", { n: normalized.length }), t("msg.gistPulled"))) {
+    if (await replaceAllPlaces(normalized, t("msg.gistPullConfirm", { n: normalized.length }), t("msg.gistPulled"))) {
       saveGistSyncState(settings, "pull");
     }
   } catch {

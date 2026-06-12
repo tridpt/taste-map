@@ -579,9 +579,7 @@ test("gist push uses mocked fetch and stores gist id", async ({ page }) => {
 
 test("gist pull uses mocked fetch and replaces places", async ({ page }) => {
   await page.goto("/");
-  page.on("dialog", (dialog) => dialog.accept());
-  const res = await page.evaluate(async () => {
-    const realFetch = window.fetch;
+  await page.evaluate(() => {
     const backup = JSON.stringify({ app: "quan-quen-map", places: [
       { id: "g1", name: "Gist Cafe", lat: 10.78, lng: 106.70, type: "cafe" },
     ] });
@@ -591,12 +589,13 @@ test("gist pull uses mocked fetch and replaces places", async ({ page }) => {
     });
     document.getElementById("gistToken").value = "tok_test";
     document.getElementById("gistId").value = "mock-gist-123";
-    await pullGistBackup();
-    window.fetch = realFetch;
-    return { count: places.length, name: places[0]?.name };
+    pullGistBackup();
   });
-  expect(res.count).toBe(1);
-  expect(res.name).toBe("Gist Cafe");
+  await expect(page.locator("#appModal")).not.toHaveClass(/hidden/);
+  await page.click("#appModalOk");
+  await expect.poll(() => page.evaluate(() => places.length)).toBe(1);
+  const name = await page.evaluate(() => places[0] && places[0].name);
+  expect(name).toBe("Gist Cafe");
 });
 
 test("orphan images are pruned from indexeddb", async ({ page }) => {
@@ -735,4 +734,31 @@ test("fetchWithRetry retries on 429 then surfaces a rate-limit error", async ({ 
   });
   expect(res.calls).toBe(2);
   expect(res.rateLimited).toBe(true);
+});
+
+test("creating a collection uses the in-app modal (no native prompt)", async ({ page }) => {
+  let nativeDialogShown = false;
+  page.on("dialog", (dialog) => { nativeDialogShown = true; dialog.dismiss(); });
+
+  await page.goto("/");
+  await page.click("#newCollectionBtn");
+
+  await expect(page.locator("#appModal")).not.toHaveClass(/hidden/);
+  await expect(page.locator("#appModalInput")).toBeVisible();
+  await page.fill("#appModalInput", "Đi chơi cuối tuần");
+  await page.click("#appModalOk");
+
+  await expect(page.locator("#appModal")).toHaveClass(/hidden/);
+  await expect(page.locator("#collectionFilterList")).toContainText("Đi chơi cuối tuần");
+  expect(nativeDialogShown).toBe(false);
+});
+
+test("delete place uses in-app confirm modal", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".place-item").first().locator("[data-action='edit']").click();
+  await page.click("#deletePlaceBtn");
+  await expect(page.locator("#appModal")).not.toHaveClass(/hidden/);
+  await page.click("#appModalCancel");
+  await expect(page.locator("#appModal")).toHaveClass(/hidden/);
+  await expect(page.locator(".place-item")).toHaveCount(5);
 });

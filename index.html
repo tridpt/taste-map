@@ -546,6 +546,17 @@
     <img id="lightboxImage" class="lightbox-image" alt="" />
   </div>
 
+  <div id="appModal" class="app-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appModalTitle" aria-hidden="true">
+    <div class="app-modal-box">
+      <h3 id="appModalTitle" class="app-modal-title"></h3>
+      <input id="appModalInput" class="app-modal-input hidden" type="text" autocomplete="off" />
+      <div class="app-modal-actions">
+        <button id="appModalCancel" class="ghost-button" type="button">Hủy</button>
+        <button id="appModalOk" class="primary-button" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="

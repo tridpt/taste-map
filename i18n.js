@@ -247,6 +247,10 @@ const I18N_STRINGS = {
     "prompt.collectionName": "Tên bộ sưu tập mới:",
     "prompt.renameTag": "Đổi tên tag \"{tag}\" thành:",
     "prompt.confirmDeleteTag": "Xóa tag \"{tag}\" khỏi tất cả quán?",
+    "prompt.encryptPassword": "Đặt mật khẩu cho file backup mã hóa:",
+    "prompt.decryptPassword": "Nhập mật khẩu file backup:",
+    "modal.ok": "OK",
+    "modal.cancel": "Hủy",
 
     "ui.noAddress": "Chưa có địa chỉ",
     "ui.points": "{n} điểm",
@@ -585,6 +589,10 @@ const I18N_STRINGS = {
     "prompt.collectionName": "New collection name:",
     "prompt.renameTag": "Rename tag \"{tag}\" to:",
     "prompt.confirmDeleteTag": "Remove tag \"{tag}\" from all places?",
+    "prompt.encryptPassword": "Set a password for the encrypted backup:",
+    "prompt.decryptPassword": "Enter the backup password:",
+    "modal.ok": "OK",
+    "modal.cancel": "Cancel",
 
     "ui.noAddress": "No address yet",
     "ui.points": "{n} pts",
