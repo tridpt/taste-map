@@ -10,8 +10,8 @@ const { GIFEncoder, quantize, applyPalette } = require("gifenc");
 
 const BASE = "http://127.0.0.1:5178";
 const OUT = path.join(__dirname, "..", "screenshots", "demo.gif");
-const W = 1280;
-const H = 720;
+const W = 1600;
+const H = 900;
 
 async function snap(page) {
   const buf = await page.screenshot({ type: "png" });
