@@ -8,8 +8,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f4f7f6",
-  "theme_color": "#f4f7f6",
+  "background_color": "#14120f",
+  "theme_color": "#14120f",
   "categories": ["food", "lifestyle", "maps", "productivity"],
   "share_target": {
     "action": "./?share-target=maps",

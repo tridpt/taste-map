@@ -4,6 +4,7 @@ test("app render", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Quán quen" })).toBeVisible();
   await expect(page.locator("#map")).toBeVisible();
+  await page.locator(".list-panel").scrollIntoViewIfNeeded();
   await expect(page.locator(".list-panel")).toBeInViewport();
   await expect(page.locator(".place-item")).toHaveCount(5);
   await expect.poll(() => page.evaluate(() => markers.size)).toBe(5);
@@ -23,7 +24,7 @@ test("app render", async ({ page }) => {
   await page.click("#sidebarToggleBtn");
   await expect(page.locator("#workspace")).toHaveClass(/sidebar-collapsed/);
   await expect(page.locator("#sidebarToggleBtn")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".sidebar")).toHaveCSS("visibility", "hidden");
+  await expect(page.locator(".sidebar")).toHaveCSS("display", "none");
   await page.click("#sidebarToggleBtn");
   await expect(page.locator("#workspace")).not.toHaveClass(/sidebar-collapsed/);
 });
@@ -90,20 +91,29 @@ test("PWA manifest is valid", async ({ page, request }) => {
 test("theme toggle switches to dark mode and persists", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
+  // App defaults to the neon (dark) theme regardless of system preference.
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("#themeToggleBtn")).toHaveAttribute("aria-pressed", "true");
+
+  await page.click("#themeToggleBtn");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("#themeToggleBtn")).toHaveAttribute("aria-pressed", "false");
+
+  let stored = await page.evaluate(() => localStorage.getItem("quan-quen-map:theme:v1"));
+  expect(stored).toBe("light");
+
+  await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   await page.click("#themeToggleBtn");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator("#themeToggleBtn")).toHaveAttribute("aria-pressed", "true");
 
-  const stored = await page.evaluate(() => localStorage.getItem("quan-quen-map:theme:v1"));
+  stored = await page.evaluate(() => localStorage.getItem("quan-quen-map:theme:v1"));
   expect(stored).toBe("dark");
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-
-  await page.click("#themeToggleBtn");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
 test("open-now filter shows only places open right now", async ({ page }) => {

@@ -12,7 +12,7 @@ const IMAGE_STORE = "images";
 const ITINERARIES_KEY = "quan-quen-map:itineraries:v1";
 const THEME_KEY = "quan-quen-map:theme:v1";
 const LANG_KEY = "quan-quen-map:lang:v1";
-const THEME_COLORS = { light: "#f4f7f6", dark: "#0f1714" };
+const THEME_COLORS = { light: "#f7f2ea", dark: "#14120f" };
 const BACKUP_REMINDER_DAYS = 7;
 const RECENT_RECOMMENDATION_DAYS = 14;
 const RANDOM_NEARBY_RADIUS = 3000;
@@ -2002,9 +2002,8 @@ function purposeLabel(key) {
 function loadTheme() {
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === "light" || stored === "dark") return stored;
-  const prefersDark = window.matchMedia
-    && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  return prefersDark ? "dark" : "light";
+  // Dark neon is the signature look, so default to it on first visit.
+  return "dark";
 }
 
 function applyTheme(theme) {

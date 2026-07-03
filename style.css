@@ -2,46 +2,57 @@
   box-sizing: border-box;
 }
 
+/* Light = warm amber companion to the Dark neon look */
 :root {
-  --bg: #f4f7f6;
-  --surface: #ffffff;
-  --surface-soft: #eef3f1;
-  --surface-strong: #111916;
-  --ink: #13201b;
-  --muted: #66736e;
-  --line: #d5dfda;
-  --line-strong: #b8c7c0;
-  --teal: #176b68;
-  --teal-dark: #0e4f4d;
-  --tomato: #bf4d35;
-  --mustard: #b98524;
-  --violet: #6550a7;
+  --bg: #f7f2ea;
+  --surface: #fffdf8;
+  --surface-soft: #f1e8d9;
+  --surface-strong: #2a2118;
+  --ink: #241c14;
+  --muted: #8a7a63;
+  --line: #e5d8c3;
+  --line-strong: #d1beA1;
+  --teal: #c2691c;
+  --teal-dark: #a4560f;
+  --tomato: #c2542f;
+  --mustard: #b8791f;
+  --violet: #8a5a2b;
   --danger: #b3261e;
-  --danger-bg: #fff1ef;
-  --warn-bg: #fff7e6;
-  --warn-line: #f0d28a;
-  --topbar-bg: rgba(255, 255, 255, 0.92);
-  --shadow: 0 18px 46px rgba(19, 32, 27, 0.14);
+  --danger-bg: #fdeee9;
+  --warn-bg: #fdf3df;
+  --warn-line: #eccf94;
+  --topbar-bg: rgba(255, 253, 248, 0.92);
+  --shadow: 0 18px 46px rgba(60, 42, 20, 0.14);
   --radius: 8px;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(194, 105, 28, 0.12);
+  --accent-ring: rgba(194, 105, 28, 0.24);
 }
 
+/* Dark = the Dark neon theme (amber glow on charcoal) */
 :root[data-theme="dark"] {
-  --bg: #0f1714;
-  --surface: #16201c;
-  --surface-soft: #1d2a25;
-  --surface-strong: #243029;
-  --ink: #e7efea;
-  --muted: #97a59f;
-  --line: #2a3a33;
-  --line-strong: #3a4d45;
-  --teal: #2f9d97;
-  --teal-dark: #257d78;
+  --bg: #14120f;
+  --surface: #1d1a15;
+  --surface-soft: #26221b;
+  --surface-strong: #322c22;
+  --ink: #f0e9db;
+  --muted: #9a9184;
+  --line: #332e25;
+  --line-strong: #4a4335;
+  --teal: #ffb347;
+  --teal-dark: #ffc978;
+  --tomato: #ff6b9d;
+  --mustard: #ffcf5c;
+  --violet: #6fd1ff;
   --danger: #ff6b5e;
   --danger-bg: #3a201d;
-  --warn-bg: #352e16;
-  --warn-line: #5c4f20;
-  --topbar-bg: rgba(16, 23, 20, 0.92);
-  --shadow: 0 18px 46px rgba(0, 0, 0, 0.5);
+  --warn-bg: #352a16;
+  --warn-line: #5c4a20;
+  --topbar-bg: rgba(20, 18, 15, 0.8);
+  --shadow: 0 0 0 1px rgba(255, 179, 71, 0.12), 0 18px 46px rgba(0, 0, 0, 0.55);
+  --on-accent: #14120f;
+  --accent-soft: rgba(255, 179, 71, 0.14);
+  --accent-ring: rgba(255, 179, 71, 0.32);
 }
 
 :root[data-theme="dark"] .leaflet-tile {
@@ -71,7 +82,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.45;
 }
 
@@ -90,7 +101,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(23, 107, 104, 0.24);
+  outline: 3px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -127,7 +138,7 @@ textarea:focus-visible {
   height: 38px;
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--teal);
   border-radius: var(--radius);
   flex: 0 0 auto;
@@ -214,7 +225,7 @@ input::placeholder {
 .primary-button {
   padding: 0 14px;
   background: var(--teal);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -254,7 +265,9 @@ input::placeholder {
 
 .ghost-button.dark:hover,
 .ghost-button.dark[aria-pressed="true"] {
+  color: var(--on-accent);
   background: var(--teal);
+  border-color: var(--teal);
 }
 
 .text-button {
@@ -266,7 +279,7 @@ input::placeholder {
 }
 
 .text-button:hover {
-  background: rgba(23, 107, 104, 0.08);
+  background: var(--accent-soft);
 }
 
 .text-button:disabled {
@@ -293,7 +306,7 @@ input::placeholder {
 
 .sidebar-toggle[aria-pressed="true"],
 .sidebar-toggle[aria-pressed="true"]:hover {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--teal);
   border-color: var(--teal);
 }
@@ -327,44 +340,42 @@ svg {
 .workspace {
   min-height: 0;
   height: calc(100dvh - 72px);
-  display: grid;
-  grid-template-columns: minmax(286px, 360px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
-  overflow: hidden;
-  transition: grid-template-columns 0.18s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.workspace.editor-open {
-  grid-template-columns: minmax(286px, 340px) minmax(0, 1fr) minmax(320px, 390px);
-}
-
-.workspace.sidebar-collapsed {
-  grid-template-columns: 0 minmax(0, 1fr);
-}
-
-.workspace.sidebar-collapsed.editor-open {
-  grid-template-columns: 0 minmax(0, 1fr) minmax(320px, 390px);
+.workspace.editor-open .editor-panel {
+  position: fixed;
+  top: 72px;
+  right: 0;
+  bottom: 0;
+  width: min(390px, 92vw);
+  z-index: 30;
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow);
 }
 
 .sidebar {
+  order: 2;
+  flex: 0 0 auto;
   min-width: 0;
-  display: grid;
-  grid-template-rows: minmax(190px, 0.9fr) auto minmax(240px, 1.1fr);
-  gap: 12px;
-  padding: 14px;
-  border-right: 1px solid var(--line);
-  overflow: hidden;
+  columns: 320px;
+  column-gap: 14px;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar > .panel {
+  break-inside: avoid;
+  width: 100%;
+  margin: 0 0 14px;
 }
 
 .workspace.sidebar-collapsed .sidebar {
-  padding: 0;
-  border-right: 0;
-  visibility: hidden;
-}
-
-.sidebar > .panel:first-child {
-  min-height: 0;
-  overflow: auto;
+  display: none;
 }
 
 .panel {
@@ -380,6 +391,15 @@ svg {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
+}
+
+.sidebar .list-panel {
+  display: block;
+}
+
+.sidebar .place-list {
+  max-height: 460px;
+  margin-top: 12px;
 }
 
 .panel-heading {
@@ -476,7 +496,7 @@ svg {
 
 .segment-button[aria-pressed="true"],
 .chip-button[aria-pressed="true"] {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--teal);
   border-color: var(--teal);
 }
@@ -685,7 +705,7 @@ svg {
 .place-item:hover,
 .place-item.selected {
   border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(23, 107, 104, 0.1);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .place-item-top {
@@ -721,13 +741,14 @@ svg {
   gap: 5px;
   padding: 0 8px;
   border-radius: var(--radius);
-  color: #fff;
+  color: var(--on-accent);
   background: var(--teal);
   font-size: 12px;
   font-weight: 800;
 }
 
 .score-badge {
+  color: #fff;
   background: var(--surface-strong);
   flex: 0 0 auto;
 }
@@ -743,6 +764,7 @@ svg {
 }
 
 .status-badge.open {
+  color: var(--on-accent);
   background: var(--teal);
 }
 
@@ -835,11 +857,11 @@ svg {
 }
 
 .map-column {
+  order: 1;
+  flex: 0 0 auto;
   min-width: 0;
-  min-height: 0;
   display: grid;
-  grid-template-rows: minmax(320px, 1fr) auto;
-  overflow: hidden;
+  grid-template-rows: auto auto;
   background: var(--bg);
 }
 
@@ -853,27 +875,23 @@ svg {
 
 #map {
   width: 100%;
-  height: 100%;
-  min-height: 0;
+  height: 64dvh;
+  min-height: 320px;
   z-index: 1;
 }
 
 .below-map-panels {
-  display: grid;
-  grid-template-columns: minmax(300px, 1.1fr) minmax(240px, 0.8fr) minmax(280px, 1fr);
-  grid-auto-rows: 232px;
-  gap: 12px;
-  max-height: 256px;
+  column-width: 320px;
+  column-gap: 12px;
   padding: 12px;
-  overflow-y: auto;
   background: var(--bg);
   border-top: 1px solid var(--line);
 }
 
 .below-map-panels .panel {
-  margin: 0;
-  overflow: auto;
-  align-content: start;
+  margin: 0 0 12px;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
 }
 
 .below-map-panels .recommendation-panel {
@@ -1364,7 +1382,7 @@ svg {
 }
 
 .day-toggle[aria-pressed="true"] {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--teal);
   border-color: var(--teal);
 }
@@ -1567,14 +1585,6 @@ body.pin-mode #map {
 }
 
 @media (max-width: 1180px) {
-  .below-map-panels {
-    grid-template-columns: minmax(300px, 1fr) minmax(260px, 0.85fr);
-  }
-
-  .below-map-panels .data-panel {
-    grid-column: 1 / -1;
-  }
-
   .workspace.editor-open {
     grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
   }
@@ -1908,12 +1918,12 @@ body.pin-mode #map {
 }
 
 .marker-cluster {
-  background: rgba(23, 107, 104, 0.22);
+  background: var(--accent-ring);
 }
 
 .marker-cluster div {
   background: var(--teal);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 800;
 }
 
@@ -2577,7 +2587,7 @@ body.pin-mode #map {
   margin-top: 8px;
   width: 100%;
   min-height: 32px;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--teal);
   border-radius: var(--radius);
   font-weight: 700;
@@ -2663,4 +2673,38 @@ body.pin-mode #map {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* ===== Dark neon accents (amber glow on charcoal) ===== */
+:root[data-theme="dark"] .brand-mark {
+  box-shadow: 0 0 18px rgba(255, 179, 71, 0.55);
+}
+
+:root[data-theme="dark"] .primary-button {
+  box-shadow: 0 0 18px rgba(255, 179, 71, 0.4);
+}
+
+:root[data-theme="dark"] .primary-button:hover {
+  box-shadow: 0 0 22px rgba(255, 179, 71, 0.6);
+}
+
+:root[data-theme="dark"] .segment-button[aria-pressed="true"],
+:root[data-theme="dark"] .chip-button[aria-pressed="true"],
+:root[data-theme="dark"] .day-toggle[aria-pressed="true"],
+:root[data-theme="dark"] .type-badge,
+:root[data-theme="dark"] .status-badge.open {
+  box-shadow: 0 0 14px rgba(255, 179, 71, 0.35);
+}
+
+:root[data-theme="dark"] .place-item.selected {
+  box-shadow: 0 0 0 1px var(--teal), 0 0 18px rgba(255, 179, 71, 0.28);
+}
+
+:root[data-theme="dark"] .topbar {
+  backdrop-filter: blur(14px);
+  background: var(--topbar-bg);
+}
+
+:root[data-theme="dark"] .pin-shell b {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
