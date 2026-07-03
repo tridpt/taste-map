@@ -17,17 +17,18 @@ async function main() {
   await page.goto(BASE, { waitUntil: "load" });
   await page.waitForTimeout(3000); // chờ tile bản đồ tải
 
-  await page.screenshot({ path: path.join(OUT, "home-light.png") });
+  // Mặc định mở ở Dark neon
+  await page.screenshot({ path: path.join(OUT, "home-dark.png") });
 
   // Chọn 1 quán để hiện panel chi tiết
   await page.locator(".place-item").first().click();
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(OUT, "detail.png") });
 
-  // Dark mode
+  // Chuyển sang giao diện sáng (biến thể ấm)
   await page.click("#themeToggleBtn");
   await page.waitForTimeout(600);
-  await page.screenshot({ path: path.join(OUT, "home-dark.png") });
+  await page.screenshot({ path: path.join(OUT, "home-light.png") });
 
   await browser.close();
   console.log("Đã lưu ảnh vào", OUT);
