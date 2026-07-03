@@ -86,10 +86,10 @@ Quy mô: ~8.200 dòng code, 42 test Playwright tự động.
 - Nhắc xuất backup định kỳ.
 
 ## 10. Giao diện
-- Dark mode / light mode, lưu lựa chọn, tự theo hệ thống lần đầu.
+- Phong cách **Dark neon**: nhấn hổ phách trên nền than, font Space Grotesk. Mặc định mở ở chế độ tối; nút đổi giao diện chuyển sang biến thể sáng ấm (tông cam đất). Lựa chọn được lưu lại.
 - Song ngữ Tiếng Việt / English (nhãn tĩnh + thông báo động), lưu lựa chọn.
-- Thu gọn thanh bên.
-- Thanh cuộn hợp tông, layout panel dưới bản đồ cân đối.
+- Bố cục xếp dọc: bản đồ chiếm toàn bộ bề ngang ở trên, các panel (gợi ý, chi tiết, thống kê, dữ liệu) và khối bộ lọc + danh sách quán nằm bên dưới, dàn dạng masonry để card xếp khít.
+- Thu gọn khối bộ lọc/danh sách.
 - Thông báo dạng toast (có nút hành động như Hoàn tác / Cập nhật).
 
 ## 11. Accessibility

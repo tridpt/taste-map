@@ -31,7 +31,7 @@
 
 ## Công nghệ
 
-Vanilla JS (không framework, không bundler) · Leaflet + markercluster + heat · Lucide icons · PWA (service worker) · lưu trữ localStorage + IndexedDB · song ngữ VI/EN. Dữ liệu quán thật từ OpenStreetMap (Overpass/Nominatim), định tuyến qua OSRM.
+Vanilla JS (không framework, không bundler) · giao diện Dark neon (font Space Grotesk, mặc định tối + biến thể sáng ấm) · bố cục xếp dọc dạng masonry · Leaflet + markercluster + heat · Lucide icons · PWA (service worker) · lưu trữ localStorage + IndexedDB · song ngữ VI/EN. Dữ liệu quán thật từ OpenStreetMap (Overpass/Nominatim), định tuyến qua OSRM.
 
 **Trình duyệt hỗ trợ:** Chrome / Edge / Firefox / Safari bản mới (cần hỗ trợ ES2020, IndexedDB, Service Worker).
 
@@ -58,7 +58,7 @@ App lưu dữ liệu trong `localStorage` của trình duyệt. Nút `Xuất` t�
 - Lọc nhanh `Đang mở cửa` để chỉ hiện quán đang mở ngay lúc này dựa trên giờ mở cửa đã lưu, hoặc chọn ngày và giờ định đi để xem quán nào mở vào khung giờ đó.
 - Nút chỉ đường mở thẳng Google Maps hoặc Apple Maps từ vị trí hiện tại tới quán.
 - Nút `Chia sẻ` dùng Web Share API trên điện thoại, tự fallback copy thông tin quán kèm link Google Maps trên máy tính.
-- Nút đổi giao diện sáng/tối trên thanh công cụ; lựa chọn được lưu trong trình duyệt và tự theo cài đặt hệ thống ở lần đầu.
+- Giao diện **Dark neon** (nhấn hổ phách trên nền than, font Space Grotesk) là mặc định; nút trên thanh công cụ đổi sang biến thể sáng ấm (tông cam đất). Lựa chọn được lưu trong trình duyệt.
 - Bấm vị trí hiện tại để hiện khoảng cách tới từng quán và sắp xếp `Gần tôi nhất`.
 - Nút `Khám phá khu này` quét OpenStreetMap quanh tâm bản đồ và hiện tất cả quán trong bán kính chọn được (thanh trượt 1–10km) để duyệt và lưu, không cần định vị.
 - Nút `Random gần tôi` khám phá quán mới quanh bạn từ bản đồ (OpenStreetMap/Overpass), lọc theo loại (cafe, quán ăn, bar, ngọt) và hiện nhiều kết quả để chọn kèm nút lưu nhanh; nếu offline thì gợi ý ngẫu nhiên trong danh sách đã lưu.

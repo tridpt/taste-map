@@ -201,10 +201,12 @@ Không có bundler: `index.html` nạp trực tiếp 3 file JS theo thứ tự `
 
 ## 9. Theme & responsive (style.css)
 
-- Biến màu ở `:root`; dark mode override ở `:root[data-theme="dark"]`.
+- Biến màu ở `:root` (light = biến thể ấm, tông cam đất trên nền giấy) và `:root[data-theme="dark"]` (Dark neon: nhấn hổ phách `#ffb347` trên nền than `#14120f`).
+- Biến `--on-accent` cho màu chữ trên nền nhấn (chữ tối trên hổ phách, chữ trắng ở light) — dùng cho nút chính, chip active, badge...
+- **Mặc định mở ở Dark neon**: `loadTheme()` trả `dark` khi chưa có lựa chọn lưu (không còn theo `prefers-color-scheme` lần đầu). Font chính là Space Grotesk (Google Fonts).
 - `applyTheme(next)` set `data-theme` trên `<html>`, đổi `<meta theme-color>`, đổi icon nút.
-- Panel dưới bản đồ dùng grid hàng cao cố định (`grid-auto-rows`) + cuộn nội bộ để tránh đè.
-- Media query cho mobile: xếp dọc, editor thành tấm trượt dưới.
+- **Bố cục xếp dọc toàn cục**: bản đồ chiếm toàn bộ bề ngang ở trên; các panel dưới bản đồ và nội dung bộ lọc/danh sách (thanh bên cũ) nằm bên dưới, dàn dạng masonry (CSS `columns`, `break-inside: avoid`) để card cao thấp xếp khít. Cả trang `.workspace` cuộn dọc tự nhiên.
+- Media query cho mobile: cùng kiểu xếp dọc, editor thành tấm trượt dưới.
 
 ## 10. Service worker (sw.js)
 
