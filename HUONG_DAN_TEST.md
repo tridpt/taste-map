@@ -266,7 +266,7 @@ npm test
 
 **Mong đợi:**
 - ✅ `npm run check`: encoding ok + manifest ok (không lỗi cú pháp).
-- ✅ `npm test`: toàn bộ Playwright test pass (hiện tại 42 test).
+- ✅ `npm test`: chạy toàn bộ 47 ca Playwright; chỉ đánh dấu pass sau khi chạy trên môi trường hiện tại.
 
 ---
 

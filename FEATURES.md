@@ -2,7 +2,7 @@
 
 Web app tĩnh (HTML/CSS/JS thuần + Leaflet), PWA, không backend. Dữ liệu lưu trong trình duyệt (localStorage + IndexedDB). Song ngữ VI/EN.
 
-Quy mô: ~8.200 dòng code, 42 test Playwright tự động.
+Quy mô: ~8.800 dòng code, 47 test Playwright tự động.
 
 ---
 
@@ -107,7 +107,7 @@ Quy mô: ~8.200 dòng code, 42 test Playwright tự động.
 - Responsive cho màn hình nhỏ (panel xếp dọc, editor dạng tấm trượt).
 
 ## 13. Chất lượng & hạ tầng
-- 42 test Playwright tự động (render, import, backup, undo, theme, i18n, lọc, lịch trình, OSRM, thống kê, CSV, bộ sưu tập, heatmap, IndexedDB, dọn ảnh mồ côi, Gist mock, lightbox, khám phá khu...).
+- 47 test Playwright tự động (render, import, backup, undo, theme, i18n, lọc, lịch trình, OSRM, thống kê, CSV, bộ sưu tập, heatmap, IndexedDB, dọn ảnh mồ côi, Gist mock, lightbox, khám phá khu...).
 - `npm run check`: kiểm tra cú pháp JS, manifest JSON, và encoding UTF-8 (tránh mojibake).
 - GitHub Actions CI: chạy check + test, chỉ deploy GitHub Pages khi pass.
 - Tài liệu: `README.md`, `TEST_CHECKLIST.md` (checklist nhanh), `HUONG_DAN_TEST.md` (hướng dẫn test từng bước), `FEATURES.md` (file này).

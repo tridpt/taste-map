@@ -15,7 +15,7 @@ Tài liệu này mô tả kiến trúc, cấu trúc mã, mô hình dữ liệu, 
 - **Song ngữ** Tiếng Việt / English.
 - **Vanilla JS** (không framework), bản đồ bằng Leaflet, icon bằng Lucide.
 
-**Quy mô**: ~8.200 dòng (app.js ~4.200, style.css ~2.300, i18n.js ~660, index.html ~560), 45 test Playwright.
+**Quy mô**: ~8.800 dòng (app.js ~4.700, style.css ~2.710, i18n.js ~688, index.html ~574), 47 test Playwright.
 
 ### Sơ đồ kiến trúc (mức cao)
 
@@ -64,7 +64,7 @@ Tài liệu này mô tả kiến trúc, cấu trúc mã, mô hình dữ liệu, 
 ```
 quan-quen-map/
 ├── index.html          # Khung HTML + toàn bộ DOM tĩnh, nạp i18n.js rồi app.js
-├── app.js              # Toàn bộ logic ứng dụng (~4.200 dòng)
+├── app.js              # Toàn bộ logic ứng dụng (~4.700 dòng)
 ├── i18n.js             # Từ điển dịch VI/EN (I18N_STRINGS)
 ├── style.css           # Toàn bộ CSS, biến theme, dark mode, responsive
 ├── sw.js               # Service worker (cache app shell + tile + runtime)
@@ -73,7 +73,7 @@ quan-quen-map/
 ├── scripts/
 │   └── check-encoding.js   # Kiểm tra UTF-8 tránh mojibake
 ├── tests/
-│   └── app.spec.js     # 45 test Playwright
+│   └── app.spec.js     # 47 test Playwright
 ├── playwright.config.js
 ├── package.json        # scripts: serve / test / check
 ├── .github/workflows/ci.yml   # CI: check + test → deploy Pages
@@ -241,7 +241,7 @@ npm run check        # check encoding UTF-8 + node --check app.js/i18n.js/sw.js 
 ```powershell
 npm install          # lần đầu (cài @playwright/test)
 npx playwright install   # cài trình duyệt nếu cần
-npm test             # 45 test; tự khởi động server qua webServer trong playwright.config.js
+npm test             # 47 test; tự khởi động server qua webServer trong playwright.config.js
 ```
 Test gọi trực tiếp hàm trong app qua `page.evaluate` (vì là global scope) và mock `window.fetch` cho các test liên quan mạng (Overpass, OSRM, Gist).
 
@@ -291,7 +291,7 @@ Test gọi trực tiếp hàm trong app qua `page.evaluate` (vì là global scop
 - Overpass/OSRM/Nominatim là dịch vụ dùng chung, có thể chậm hoặc giới hạn tần suất (đã có `fetchWithRetry` + thông báo).
 - `localStorage` ~5MB: ảnh đã chuyển sang IndexedDB nên dư địa lớn, nhưng dữ liệu text vẫn có giới hạn (có cảnh báo khi gần đầy).
 - WCAG: đã xử lý ARIA/focus cơ bản; đánh giá đầy đủ cần test thủ công với screen reader.
-- `app.js` là một file lớn (~4.200 dòng); nếu mở rộng nhiều nên cân nhắc tách ES modules + bundler.
+- `app.js` là một file lớn (~4.700 dòng); nếu mở rộng nhiều nên cân nhắc tách ES modules + bundler.
 
 ## 16. Lịch sử & ghi chú
 
